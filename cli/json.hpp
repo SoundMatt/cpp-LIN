@@ -177,7 +177,7 @@ inline std::string version_json() {
            "\"protocol\":\"LIN\","
            "\"protocol_int\":3,"
            "\"version\":\"0.1.0\","
-           "\"spec_version\":\"1.10\","
+           "\"spec_version\":\"1.11\","
            "\"language\":\"cpp\","
            "\"runtime\":\"c++17\""
            "}";
@@ -191,7 +191,7 @@ inline std::string capabilities_json() {
            "\"protocol\":\"LIN\","
            "\"protocol_int\":3,"
            "\"version\":\"0.1.0\","
-           "\"spec_version\":\"1.10\","
+           "\"spec_version\":\"1.11\","
            "\"commands\":[\"version\",\"capabilities\",\"status\",\"convert\"],"
            "\"transports\":[\"LIN\"],"
            "\"features\":[\"ldf\",\"e2e\",\"master\",\"slave\",\"virtual\"],"

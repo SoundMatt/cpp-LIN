@@ -272,7 +272,7 @@ class Node {
 - `SubscriberOption` / `SubscriberConfig` / `apply_options()`
 - `INode`, `ICaller` abstract interfaces
 - Optional capability interfaces: `IHealthProvider`, `IMetricsProvider`, `IDrainer`
-- kSpecVersion constant "1.10"
+- kSpecVersion constant "1.11"
 
 **Requirements:** REQ-RELAY-001..029, REQ-RELAY-051, REQ-RELAY-056, REQ-RELAY-059
 

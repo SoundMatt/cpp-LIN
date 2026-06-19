@@ -245,7 +245,7 @@ must ensure:
 4. The `id` field in `relay::Message` carries the decimal string representation
    of the LIN frame ID (e.g., `"16"` for frame 0x10).
 
-See `RELAY Spec v1.10 §8.3` for the complete LIN-over-RELAY envelope specification.
+See `RELAY Spec v1.11 §8.3` for the complete LIN-over-RELAY envelope specification.
 
 ---
 
@@ -290,4 +290,4 @@ Reproducing from `SEOOC.md` for convenience:
 - `sas.md` — Software Architecture Specification
 - ISO 26262:2018 Part 6 §7 — Software integration and verification
 - ISO 26262:2018 Part 10 §9 — Safety element out of context
-- RELAY Specification v1.10 §8.3 — LIN bus binding
+- RELAY Specification v1.11 §8.3 — LIN bus binding

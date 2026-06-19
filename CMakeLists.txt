@@ -65,7 +65,9 @@ endif()
 # ── CLI binary ────────────────────────────────────────────────────────────────
 
 option(CPPLIN_BUILD_CLI "Build RELAY convert CLI" ON)
-if(CPPLIN_BUILD_CLI)
+# RELAY spec v1.11 §17.7: C++ implementations must be buildable via -DRELAY_BUILD_CLI=ON
+option(RELAY_BUILD_CLI "Alias for CPPLIN_BUILD_CLI (RELAY spec §17.7)" OFF)
+if(CPPLIN_BUILD_CLI OR RELAY_BUILD_CLI)
     add_subdirectory(cli)
 endif()
 

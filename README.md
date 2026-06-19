@@ -3,14 +3,14 @@
 C++ LIN bus library — RELAY-conformant, ISO 26262 ASIL-B.
 
 [![CI](https://github.com/SoundMatt/cpp-LIN/actions/workflows/ci.yml/badge.svg)](https://github.com/SoundMatt/cpp-LIN/actions/workflows/ci.yml)
-[![RELAY Conformant](https://img.shields.io/badge/RELAY-v1.10%20conformant-blue)](https://github.com/SoundMatt/RELAY)
+[![RELAY Conformant](https://img.shields.io/badge/RELAY-v1.11%20conformant-blue)](https://github.com/SoundMatt/RELAY)
 [![ASIL-B](https://img.shields.io/badge/ISO%2026262-ASIL--B-orange)](SAFETY_PLAN.md)
 [![License: MPL 2.0](https://img.shields.io/badge/License-MPL%202.0-brightgreen.svg)](LICENSE)
 
 ## Overview
 
 cpp-LIN is a production-quality C++ implementation of the LIN (Local Interconnect
-Network) protocol, following the RELAY specification v1.10. It is the C++ sibling
+Network) protocol, following the RELAY specification v1.11. It is the C++ sibling
 of [go-LIN](https://github.com/SoundMatt/go-LIN) and is patterned after
 [cpp-CAN](https://github.com/SoundMatt/cpp-CAN).
 
@@ -49,7 +49,7 @@ ctest --test-dir build --output-on-failure
 ```
 include/lin/
   channel.hpp        — Chan<T>: bounded, thread-safe FIFO
-  relay.hpp          — RELAY v1.10 types (Protocol, Message, INode, …)
+  relay.hpp          — RELAY v1.11 types (Protocol, Message, INode, …)
   lin.hpp            — IBus, IMasterBus, Frame, Filter, free functions
   virtual/bus.hpp    — In-process virtual LIN bus
   safety/e2e.hpp     — E2E Protector / Receiver
@@ -95,7 +95,7 @@ P1 = NOT(ID1 ^ ID3 ^ ID4 ^ ID5)   (bit 7)
 
 ## RELAY Integration
 
-cpp-LIN exposes a RELAY v1.10 `INode` adapter:
+cpp-LIN exposes a RELAY v1.11 `INode` adapter:
 
 ```cpp
 #include <lin/lin.hpp>
