@@ -848,6 +848,262 @@
       "asil": "ASIL-B",
       "rationale": "RELAY §7 rule 4 / §13.7: a mandatory mock transport must implement the full bus contract so applications can be tested without hardware.",
       "tags": ["mock", "relay"]
+    },
+    {
+      "id": "REQ-RELAY-001",
+      "title": "Protocol enum values are defined and stable",
+      "description": "relay::Protocol shall define CAN=1, DDS=2, LIN=3, MQTT=4, RCP=5, SOMEIP=6 as stable integer values matching RELAY spec v1.10 §3.",
+      "asil": "ASIL-B",
+      "rationale": "Protocol values are wire-format identifiers; changing them breaks cross-language interop.",
+      "tags": ["relay", "protocol"]
+    },
+    {
+      "id": "REQ-RELAY-002",
+      "title": "Protocol enum is an int-backed enum class",
+      "description": "relay::Protocol shall be an enum class backed by int to prevent implicit integer promotion and enable type-safe switching.",
+      "asil": "ASIL-B",
+      "rationale": "Type safety prevents accidental protocol ID confusion at compile time.",
+      "tags": ["relay", "protocol"]
+    },
+    {
+      "id": "REQ-RELAY-003",
+      "title": "to_string(Protocol) returns canonical name",
+      "description": "relay::to_string(Protocol p) shall return the canonical uppercase protocol name (e.g., 'LIN', 'CAN') and 'unknown' for unrecognised values.",
+      "asil": "ASIL-B",
+      "rationale": "RELAY §3.1: canonical names are used in log output and diagnostic fields.",
+      "tags": ["relay", "protocol"]
+    },
+    {
+      "id": "REQ-RELAY-004",
+      "title": "Version struct has major/minor/patch fields",
+      "description": "relay::Version shall provide int fields major, minor, and patch with equality comparison.",
+      "asil": "ASIL-B",
+      "rationale": "RELAY §4: version negotiation requires structured version comparison.",
+      "tags": ["relay", "version"]
+    },
+    {
+      "id": "REQ-RELAY-005",
+      "title": "Version::to_string returns 'major.minor.patch'",
+      "description": "Version::to_string() shall return a string formatted as '<major>.<minor>.<patch>'.",
+      "asil": "ASIL-B",
+      "rationale": "RELAY §4.1: canonical version string format for diagnostics and conformance checks.",
+      "tags": ["relay", "version"]
+    },
+    {
+      "id": "REQ-RELAY-006",
+      "title": "Message struct fields: protocol, version, id, payload, timestamp, seq, meta",
+      "description": "relay::Message shall provide fields: Protocol protocol, Version version, std::string id, std::vector<uint8_t> payload, system_clock::time_point timestamp, uint64_t seq, unordered_map<string,string> meta.",
+      "asil": "ASIL-B",
+      "rationale": "RELAY §5: canonical message envelope for all protocol bindings.",
+      "tags": ["relay", "message"]
+    },
+    {
+      "id": "REQ-RELAY-007",
+      "title": "Message id is a string (protocol-specific format)",
+      "description": "Message::id shall be a std::string whose format is defined per protocol binding (e.g., decimal integer for LIN, hex for CAN).",
+      "asil": "ASIL-B",
+      "rationale": "RELAY §5.2: string ID allows each protocol to use its native identifier notation.",
+      "tags": ["relay", "message"]
+    },
+    {
+      "id": "REQ-RELAY-008",
+      "title": "Errc::closed is error code 1",
+      "description": "relay::Errc::closed shall have integer value 1.",
+      "asil": "ASIL-B",
+      "rationale": "RELAY §9.1: stable error code values required for cross-language compatibility.",
+      "tags": ["relay", "error"]
+    },
+    {
+      "id": "REQ-RELAY-009",
+      "title": "Errc::not_connected is error code 2",
+      "description": "relay::Errc::not_connected shall have integer value 2.",
+      "asil": "ASIL-B",
+      "rationale": "RELAY §9.1: stable error code values.",
+      "tags": ["relay", "error"]
+    },
+    {
+      "id": "REQ-RELAY-010",
+      "title": "Errc::timeout is error code 3",
+      "description": "relay::Errc::timeout shall have integer value 3.",
+      "asil": "ASIL-B",
+      "rationale": "RELAY §9.1: stable error code values.",
+      "tags": ["relay", "error"]
+    },
+    {
+      "id": "REQ-RELAY-011",
+      "title": "Errc::payload_too_large is error code 4",
+      "description": "relay::Errc::payload_too_large shall have integer value 4.",
+      "asil": "ASIL-B",
+      "rationale": "RELAY §9.1: stable error code values.",
+      "tags": ["relay", "error"]
+    },
+    {
+      "id": "REQ-RELAY-012",
+      "title": "Errc is an int-backed enum class",
+      "description": "relay::Errc shall be an enum class backed by int, compatible with std::error_code.",
+      "asil": "ASIL-B",
+      "rationale": "Enables implicit std::error_code construction via is_error_code_enum specialisation.",
+      "tags": ["relay", "error"]
+    },
+    {
+      "id": "REQ-RELAY-013",
+      "title": "INode abstract interface: protocol(), send(), subscribe(), close()",
+      "description": "relay::INode shall declare pure virtual methods: protocol() const noexcept, send(Message), subscribe(vector<SubscriberOption>), and close().",
+      "asil": "ASIL-B",
+      "rationale": "RELAY §6: INode is the mandatory base interface for all protocol adapters.",
+      "tags": ["relay", "interface"]
+    },
+    {
+      "id": "REQ-RELAY-014",
+      "title": "ICaller extends INode with call()",
+      "description": "relay::ICaller shall extend INode with a call(Message req, milliseconds timeout) method returning pair<Message, error_code>.",
+      "asil": "ASIL-B",
+      "rationale": "RELAY §6.4: synchronous request/response pattern for RPC-style protocols.",
+      "tags": ["relay", "interface"]
+    },
+    {
+      "id": "REQ-RELAY-015",
+      "title": "BackPressurePolicy enum: DropNewest=0, DropOldest=1, Block=2",
+      "description": "relay::BackPressurePolicy shall define DropNewest=0, DropOldest=1, Block=2.",
+      "asil": "ASIL-B",
+      "rationale": "RELAY §8: backpressure policies allow callers to choose between latency and reliability tradeoffs.",
+      "tags": ["relay", "backpressure"]
+    },
+    {
+      "id": "REQ-RELAY-016",
+      "title": "SubscriberConfig holds channel depth, backpressure, event_id, topic_name",
+      "description": "relay::SubscriberConfig shall hold: int chan_depth, BackPressurePolicy back_pressure, uint32_t event_id, string topic_name.",
+      "asil": "ASIL-B",
+      "rationale": "RELAY §8.1: subscriber configuration captures all protocol-agnostic subscriber settings.",
+      "tags": ["relay", "subscriber"]
+    },
+    {
+      "id": "REQ-RELAY-017",
+      "title": "SubscriberOption is a std::function<void(SubscriberConfig&)>",
+      "description": "relay::SubscriberOption shall be typedef'd as std::function<void(SubscriberConfig&)>.",
+      "asil": "ASIL-B",
+      "rationale": "RELAY §8.2: functional option pattern allows composable subscriber configuration.",
+      "tags": ["relay", "subscriber"]
+    },
+    {
+      "id": "REQ-RELAY-018",
+      "title": "apply_options() folds options into SubscriberConfig",
+      "description": "relay::apply_options(opts) shall apply each option in order to a default SubscriberConfig and return the result.",
+      "asil": "ASIL-B",
+      "rationale": "RELAY §8.3: apply_options is the canonical way to construct a SubscriberConfig from options.",
+      "tags": ["relay", "subscriber"]
+    },
+    {
+      "id": "REQ-RELAY-019",
+      "title": "SubscriberConfig::effective_depth returns default when chan_depth is 0",
+      "description": "effective_depth(default_depth) shall return chan_depth when chan_depth > 0, else default_depth.",
+      "asil": "ASIL-B",
+      "rationale": "RELAY §8.1: zero chan_depth means 'use implementation default'; explicit non-zero overrides.",
+      "tags": ["relay", "subscriber"]
+    },
+    {
+      "id": "REQ-RELAY-020",
+      "title": "kSpecVersion constant equals '1.10'",
+      "description": "relay::kSpecVersion shall be a constexpr const char* equal to '1.10'.",
+      "asil": "ASIL-B",
+      "rationale": "RELAY §2: spec version constant enables runtime conformance checking.",
+      "tags": ["relay", "version"]
+    },
+    {
+      "id": "REQ-RELAY-021",
+      "title": "error_category() and make_error_code(Errc) are noexcept",
+      "description": "relay::error_category() and make_error_code(Errc) shall be declared noexcept and return stable singleton/error_code values.",
+      "asil": "ASIL-B",
+      "rationale": "std::error_code comparison requires stable category identity; noexcept prevents unexpected termination.",
+      "tags": ["relay", "error"]
+    },
+    {
+      "id": "REQ-RELAY-022",
+      "title": "is_error_code_enum<relay::Errc> specialisation enables implicit construction",
+      "description": "std::is_error_code_enum<relay::Errc> shall be specialised to true_type to enable implicit relay::Errc -> std::error_code conversion.",
+      "asil": "ASIL-B",
+      "rationale": "Enables idiomatic std::error_code usage: if (err == relay::Errc::closed) {...}",
+      "tags": ["relay", "error"]
+    },
+    {
+      "id": "REQ-RELAY-023",
+      "title": "HealthStatus enum: OK=0, Degraded=1, Down=2",
+      "description": "relay::HealthStatus shall define OK=0, Degraded=1, Down=2.",
+      "asil": "ASIL-B",
+      "rationale": "RELAY §11: standardised health status values for monitoring integrations.",
+      "tags": ["relay", "health"]
+    },
+    {
+      "id": "REQ-RELAY-024",
+      "title": "Health struct holds status and details string",
+      "description": "relay::Health shall hold HealthStatus status and std::string details.",
+      "asil": "ASIL-B",
+      "rationale": "RELAY §11.1: health details provide diagnostic context beyond the status enum.",
+      "tags": ["relay", "health"]
+    },
+    {
+      "id": "REQ-RELAY-025",
+      "title": "IHealthProvider declares virtual health() const",
+      "description": "relay::IHealthProvider shall declare a pure virtual health() const method returning Health.",
+      "asil": "ASIL-B",
+      "rationale": "RELAY §11: optional capability interface for nodes that support health reporting.",
+      "tags": ["relay", "health"]
+    },
+    {
+      "id": "REQ-RELAY-026",
+      "title": "Metrics struct fields: write_count, deliver_count, drop_count, bytes_written, bytes_delivered, error_count",
+      "description": "relay::Metrics shall hold uint64_t fields for write_count, deliver_count, drop_count, bytes_written, bytes_delivered, error_count.",
+      "asil": "ASIL-B",
+      "rationale": "RELAY §12: metrics fields provide observability for bus throughput and reliability.",
+      "tags": ["relay", "metrics"]
+    },
+    {
+      "id": "REQ-RELAY-027",
+      "title": "IMetricsProvider declares virtual metrics() const",
+      "description": "relay::IMetricsProvider shall declare a pure virtual metrics() const method returning Metrics.",
+      "asil": "ASIL-B",
+      "rationale": "RELAY §12: optional capability interface for nodes that expose metrics.",
+      "tags": ["relay", "metrics"]
+    },
+    {
+      "id": "REQ-RELAY-028",
+      "title": "IDrainer declares virtual close_with_drain(timeout)",
+      "description": "relay::IDrainer shall declare a pure virtual close_with_drain(std::chrono::milliseconds timeout) method returning std::error_code.",
+      "asil": "ASIL-B",
+      "rationale": "RELAY §13: drain pattern ensures in-flight messages are delivered before close.",
+      "tags": ["relay", "lifecycle"]
+    },
+    {
+      "id": "REQ-RELAY-029",
+      "title": "Metrics bytes_written and bytes_delivered track total payload bytes",
+      "description": "bytes_written shall accumulate the total byte count of all payloads sent; bytes_delivered shall accumulate the total byte count of all payloads delivered to subscribers.",
+      "asil": "ASIL-B",
+      "rationale": "RELAY §12.1: byte counters enable bandwidth monitoring and leak detection.",
+      "tags": ["relay", "metrics"]
+    },
+    {
+      "id": "REQ-RELAY-051",
+      "title": "with_channel_depth(n) option sets chan_depth",
+      "description": "relay::with_channel_depth(n) shall return a SubscriberOption that sets SubscriberConfig::chan_depth to n.",
+      "asil": "ASIL-B",
+      "rationale": "RELAY §8.2.1: channel depth tuning option for subscriber configuration.",
+      "tags": ["relay", "subscriber", "option"]
+    },
+    {
+      "id": "REQ-RELAY-056",
+      "title": "with_back_pressure(policy) option sets back_pressure",
+      "description": "relay::with_back_pressure(p) shall return a SubscriberOption that sets SubscriberConfig::back_pressure to p.",
+      "asil": "ASIL-B",
+      "rationale": "RELAY §8.2.2: backpressure policy option for subscriber configuration.",
+      "tags": ["relay", "subscriber", "option"]
+    },
+    {
+      "id": "REQ-RELAY-059",
+      "title": "parse_protocol() throws on unknown string; try_parse_protocol() returns false",
+      "description": "relay::parse_protocol(s) shall throw std::invalid_argument for unknown protocol strings. relay::try_parse_protocol(s, out) shall return false and leave out unchanged for unknown strings.",
+      "asil": "ASIL-B",
+      "rationale": "RELAY §3.2: robust protocol string parsing with two variants for exception/error-code styles.",
+      "tags": ["relay", "protocol"]
     }
   ]
 }

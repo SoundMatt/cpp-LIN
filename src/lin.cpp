@@ -104,25 +104,33 @@ Frame from_message(const relay::Message& m) {
     return f;
 }
 
-// ── RELAY adapter ── REQ-LIN-011 ─────────────────────────────────────────────
+// ── RELAY adapter ── REQ-ADAPT-001 REQ-ADAPT-002 REQ-ADAPT-003 REQ-ADAPT-004 REQ-ADAPT-005
 
 namespace {
 
+// LinAdapter wraps an IBus as a relay::INode.
+// fusa:req REQ-ADAPT-001 REQ-ADAPT-002 REQ-ADAPT-003 REQ-ADAPT-004 REQ-ADAPT-005
 class LinAdapter : public relay::INode {
 public:
     explicit LinAdapter(std::shared_ptr<IBus> bus) : bus_(std::move(bus)) {}
 
+    // fusa:req REQ-ADAPT-001
     relay::Protocol protocol() const noexcept override { return relay::Protocol::LIN; }
 
+    // fusa:req REQ-ADAPT-002 REQ-ADAPT-003
     std::error_code send(relay::Message msg) override {
+        unsigned long long id_val{};
         try {
-            uint8_t id = static_cast<uint8_t>(std::stoull(msg.id));
-            return bus_->publish(id, std::move(msg.payload));
+            id_val = std::stoull(msg.id);
         } catch (...) {
             return relay::make_error_code(relay::Errc::payload_too_large);
         }
+        if (id_val > kLINMaxID)
+            return relay::make_error_code(relay::Errc::payload_too_large);
+        return bus_->publish(static_cast<uint8_t>(id_val), std::move(msg.payload));
     }
 
+    // fusa:req REQ-ADAPT-004
     std::pair<std::shared_ptr<Chan<relay::Message>>, std::error_code>
         subscribe(std::vector<relay::SubscriberOption> opts = {}) override
     {
@@ -163,6 +171,7 @@ public:
         return {out, {}};
     }
 
+    // fusa:req REQ-ADAPT-005
     std::error_code close() override { return bus_->close(); }
 
 private:
@@ -172,6 +181,7 @@ private:
 
 } // anonymous namespace
 
+// fusa:req REQ-ADAPT-001
 std::unique_ptr<relay::INode> adapt(std::shared_ptr<IBus> bus) {
     return std::make_unique<LinAdapter>(std::move(bus));
 }
