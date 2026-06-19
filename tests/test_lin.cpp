@@ -80,11 +80,11 @@ TEST_CASE("protect_id: preserves lower 6 bits", "[lin][REQ-LIN-018]") {
 }
 
 TEST_CASE("protect_id: known vector ID=0x10", "[lin][REQ-LIN-004][REQ-LIN-005]") {
-    // ID=0x10 (16 decimal): bits 0-5 = 010000
-    // P0 = 0^0^0^0 = 0 → bit 6 = 0
-    // P1 = NOT(0^0^0^1) = NOT(1) = 0 → bit 7 = 0
-    // PID = 0x10 | 0x00 | 0x00 = 0x10
-    CHECK(protect_id(0x10) == 0x10);
+    // ID=0x10 (16 decimal): bits 0-5 = 010000 (bit4=1, rest 0)
+    // P0 = ID0^ID1^ID2^ID4 = 0^0^0^1 = 1 → bit 6 = 1
+    // P1 = NOT(ID1^ID3^ID4^ID5) = NOT(0^0^1^0) = NOT(1) = 0 → bit 7 = 0
+    // PID = 0x10 | 0x40 = 0x50
+    CHECK(protect_id(0x10) == 0x50);
 }
 
 TEST_CASE("protect_id: known vector ID=0x00", "[lin][REQ-LIN-004][REQ-LIN-005]") {

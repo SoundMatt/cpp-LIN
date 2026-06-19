@@ -51,13 +51,13 @@ std::pair<Frame, std::error_code> Node::send_header(uint8_t id) {
 
 // fusa:req REQ-MASTER-003 REQ-MASTER-004 REQ-MASTER-005 REQ-MASTER-006
 // fusa:req REQ-MASTER-007 REQ-MASTER-008 REQ-MASTER-009 REQ-MASTER-013
-std::error_code Node::run(std::stop_token token) {
+std::error_code Node::run(const std::atomic<bool>& stop) {
     if (schedule_.empty())
         return relay::make_error_code(relay::Errc::payload_too_large);
 
-    while (!token.stop_requested()) {
+    while (!stop.load()) {
         for (const auto& slot : schedule_) {
-            if (token.stop_requested()) return {};
+            if (stop.load()) return {};
 
             auto [f, err] = bus_->send_header(slot.id);
             if (err) {
@@ -69,7 +69,7 @@ std::error_code Node::run(std::stop_token token) {
             if (slot.delay_ms > 0) {
                 auto deadline = std::chrono::steady_clock::now()
                               + std::chrono::milliseconds(slot.delay_ms);
-                while (!token.stop_requested() &&
+                while (!stop.load() &&
                        std::chrono::steady_clock::now() < deadline) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 }
