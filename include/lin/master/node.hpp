@@ -18,9 +18,9 @@
 #pragma once
 
 #include <lin/lin.hpp>
+#include <atomic>
 #include <functional>
 #include <memory>
-#include <stop_token>
 #include <vector>
 
 namespace lin::master {
@@ -52,14 +52,14 @@ public:
     // fusa:req REQ-MASTER-002
     std::pair<Frame, std::error_code> send_header(uint8_t id);
 
-    // Executes the schedule table repeatedly until the stop_token is requested.
+    // Executes the schedule table repeatedly until stop is set to true.
     // Each slot transmits a header, waits for a slave response, then sleeps
     // for the slot's configured delay. Per-slot errors invoke on_error but do
     // not abort the schedule.
     // Returns an error immediately if the schedule is empty.
     // fusa:req REQ-MASTER-003 REQ-MASTER-004 REQ-MASTER-005 REQ-MASTER-006
     // fusa:req REQ-MASTER-007 REQ-MASTER-008 REQ-MASTER-009 REQ-MASTER-013
-    std::error_code run(std::stop_token token);
+    std::error_code run(const std::atomic<bool>& stop);
 
 private:
     std::shared_ptr<IMasterBus>          bus_;

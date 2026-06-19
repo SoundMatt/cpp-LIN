@@ -134,11 +134,11 @@ public:
         int depth = cfg.effective_depth(64);
         auto out = std::make_shared<Chan<relay::Message>>(static_cast<std::size_t>(depth));
 
-        std::thread([this, frames = std::move(frames), out,
+        std::thread([this, frame_ch = std::move(frames), out,
                      bp = cfg.back_pressure]() mutable
         {
             while (true) {
-                auto opt_f = frames->recv();
+                auto opt_f = frame_ch->recv();
                 if (!opt_f) break;
 
                 relay::Message msg = to_message(*opt_f);
