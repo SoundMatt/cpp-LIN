@@ -125,6 +125,6 @@ For safety-critical (ASIL-B) vulnerabilities, the following additional steps app
 - **ISO/SAE 21434:2021** §7.4 — Vulnerability management and disclosure
 - **IEC 62443-4-1:2018** SM-2 — Security management (vulnerability response)
 - **IEC/TR 62443-2-3:2015** — Patch management for IACS
-- **RELAY Spec v1.10** §22 — Security considerations
+- **RELAY Spec v1.11** §22 — Security considerations
 - `SECURITY.md` — Public-facing vulnerability disclosure policy
 - `SEOOC.md` — Safety Element out of Context assumptions (integrator scope)

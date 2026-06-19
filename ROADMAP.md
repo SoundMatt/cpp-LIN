@@ -8,7 +8,7 @@
 - [x] Master node with schedule table runner (`std::stop_token`)
 - [x] Slave node with per-ID response registration
 - [x] E2E safety: Protector and Receiver (CRC-16/CCITT-FALSE, 10-byte header)
-- [x] RELAY v1.10 adapter (`relay::INode`)
+- [x] RELAY v1.11 adapter (`relay::INode`)
 - [x] CLI binary (`cpp-lin-cli`) for relay conform/interop
 - [x] ISO 26262 ASIL-B requirements traceability
 - [x] CI pipeline: build, test, coverage, sanitizers, RELAY conform, cpfusa

@@ -5,7 +5,7 @@
     "language": "cpp",
     "standard": "iso26262",
     "asil": "ASIL-B",
-    "spec": "RELAY v1.10"
+    "spec": "RELAY v1.11"
   },
   "requirements": [
     {"id": "REQ-LIN-001",  "title": "ValidateFrame rejects ID > 0x3F",                  "asil": "ASIL-B", "tags": ["core", "validation"]},

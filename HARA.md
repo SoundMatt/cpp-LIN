@@ -131,6 +131,6 @@ ASIL-D at system level if required.
 
 - ISO 26262:2018 Part 3 — Concept phase
 - LIN Specification Package Rev 2.2A — Section 2 (Frame structure)
-- RELAY Specification v1.10 — §15 (Error handling)
+- RELAY Specification v1.11 — §15 (Error handling)
 - `SEOOC.md` — Assumptions on use
 - `SAFETY_PLAN.md` — Development process

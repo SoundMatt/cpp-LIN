@@ -13,7 +13,7 @@
 
 This Safety Plan governs the development of **cpp-LIN**, a C++ software
 component implementing the LIN (Local Interconnect Network) bus protocol,
-conformant to the RELAY specification v1.10.
+conformant to the RELAY specification v1.11.
 
 cpp-LIN is classified as a **Safety Element out of Context (SEooC)** per
 ISO 26262-10 §9. It is intended for integration into automotive ECUs and
@@ -131,7 +131,7 @@ See [HARA.md](HARA.md).
 - IEC 61508:2010 — Functional safety of E/E/PE safety-related systems
 - ISO/SAE 21434:2021 — Road vehicles — Cybersecurity engineering
 - LIN Specification Package, Revision 2.2A (LIN Consortium)
-- RELAY Specification v1.10 (SoundMatt)
+- RELAY Specification v1.11 (SoundMatt)
 - `.fusa-reqs.json` — Machine-readable requirements
 - `HARA.md` — Hazard Analysis and Risk Assessment
 - `SEOOC.md` — Safety Element out of Context document

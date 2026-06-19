@@ -7,7 +7,7 @@
     "lin.checksum": "99",
     "lin.checksum_type": "1"
   },
-  "spec_version": "1.10",
+  "spec_version": "1.11",
   "expected_error": "ErrInvalidFrame",
   "error_reason": "diagnostic frames (0x3C/0x3D) must use Classic checksum (type 0)"
 }

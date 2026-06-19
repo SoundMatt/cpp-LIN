@@ -852,7 +852,7 @@
     {
       "id": "REQ-RELAY-001",
       "title": "Protocol enum values are defined and stable",
-      "description": "relay::Protocol shall define CAN=1, DDS=2, LIN=3, MQTT=4, RCP=5, SOMEIP=6 as stable integer values matching RELAY spec v1.10 §3.",
+      "description": "relay::Protocol shall define CAN=1, DDS=2, LIN=3, MQTT=4, RCP=5, SOMEIP=6 as stable integer values matching RELAY spec v1.11 §3.",
       "asil": "ASIL-B",
       "rationale": "Protocol values are wire-format identifiers; changing them breaks cross-language interop.",
       "tags": ["relay", "protocol"]
@@ -1003,8 +1003,8 @@
     },
     {
       "id": "REQ-RELAY-020",
-      "title": "kSpecVersion constant equals '1.10'",
-      "description": "relay::kSpecVersion shall be a constexpr const char* equal to '1.10'.",
+      "title": "kSpecVersion constant equals '1.11'",
+      "description": "relay::kSpecVersion shall be a constexpr const char* equal to '1.11'.",
       "asil": "ASIL-B",
       "rationale": "RELAY §2: spec version constant enables runtime conformance checking.",
       "tags": ["relay", "version"]

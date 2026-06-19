@@ -67,4 +67,4 @@ escalation contacts.
 
 - ISO/SAE 21434:2021 §7.4 — Vulnerability management
 - IEC 62443-4-1:2018 SM-2 — Security management
-- RELAY Spec v1.10 §22 — Security considerations
+- RELAY Spec v1.11 §22 — Security considerations
