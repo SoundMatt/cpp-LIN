@@ -1,5 +1,198 @@
 {
+  "version": "1",
+  "standard": "IEC 62443-4-1:2018 / IEC 62443-4-2:2019",
   "target_sl": "SL-2",
   "component_type": "embedded-software",
-  "incident_resp_doc": "INCIDENT-RESPONSE.md"
+  "component": "cpp-LIN",
+  "date": "2026-06-19",
+  "incident_resp_doc": "INCIDENT-RESPONSE.md",
+  "tara_doc": "TARA.md",
+  "tara_json": "tara.json",
+  "security_requirements": [
+    {
+      "id": "SR-IAC-01",
+      "category": "Identification and Authentication",
+      "standard_ref": "IEC 62443-4-2 CR 1.1",
+      "description": "cpp-LIN does not implement authentication (no network connectivity); integrating system must authenticate LDF and configuration files via secure boot hash (DSR-05).",
+      "status": "integrator",
+      "integrator_req": "DSR-05"
+    },
+    {
+      "id": "SR-IAC-02",
+      "category": "Identification and Authentication",
+      "standard_ref": "IEC 62443-4-2 CR 1.5",
+      "description": "No default passwords or credentials exist in cpp-LIN. No authentication secrets stored in source code.",
+      "status": "met",
+      "evidence": "Source code review — no credential strings"
+    },
+    {
+      "id": "SR-UC-01",
+      "category": "Use Control",
+      "standard_ref": "IEC 62443-4-2 CR 2.1",
+      "description": "cpp-LIN enforces frame ID boundaries (0x00–0x3F) at all API entry points. No frame is processed beyond declared protocol bounds.",
+      "status": "met",
+      "evidence": "REQ-LIN-001, REQ-VIRT-004, REQ-VIRT-010, REQ-ADAPT-003, REQ-SLAVE-004",
+      "fusa_reqs": ["REQ-LIN-001", "REQ-VIRT-004", "REQ-ADAPT-003"]
+    },
+    {
+      "id": "SR-UC-02",
+      "category": "Use Control",
+      "standard_ref": "IEC 62443-4-2 CR 2.2",
+      "description": "Wireless access is not applicable; LIN is a wired single-master bus. Physical access control is integrator responsibility (ASM-09).",
+      "status": "integrator",
+      "integrator_req": "ASM-09"
+    },
+    {
+      "id": "SR-SI-01",
+      "category": "System Integrity",
+      "standard_ref": "IEC 62443-4-2 CR 3.1",
+      "description": "Communication integrity for safety-critical payloads is enforced by CRC-16/CCITT-FALSE E2E protection header (lin::safety::Protector/Receiver).",
+      "status": "met",
+      "evidence": "REQ-SAFETY-005, REQ-SAFETY-006, REQ-SAFETY-008",
+      "fusa_reqs": ["REQ-SAFETY-005", "REQ-SAFETY-008"]
+    },
+    {
+      "id": "SR-SI-02",
+      "category": "System Integrity",
+      "standard_ref": "IEC 62443-4-2 CR 3.2",
+      "description": "Replay attacks are detected by the monotonic sequence counter in the E2E safety header. Receiver rejects any non-sequential counter.",
+      "status": "met",
+      "evidence": "REQ-SAFETY-003, REQ-SAFETY-009",
+      "fusa_reqs": ["REQ-SAFETY-009"]
+    },
+    {
+      "id": "SR-SI-03",
+      "category": "System Integrity",
+      "standard_ref": "IEC 62443-4-2 CR 3.3",
+      "description": "Software and information integrity for LDF files is an integrator responsibility (secure boot hash verification). cpp-LIN validates LDF parse errors but cannot verify file provenance.",
+      "status": "integrator",
+      "integrator_req": "DSR-05"
+    },
+    {
+      "id": "SR-SI-04",
+      "category": "System Integrity",
+      "standard_ref": "IEC 62443-4-2 CR 3.4",
+      "description": "Error detection on all transmitted frames: PID parity bits (P0/P1), enhanced checksum, and optional E2E CRC protection.",
+      "status": "met",
+      "evidence": "REQ-LIN-004..010, REQ-SAFETY-001..015",
+      "fusa_reqs": ["REQ-LIN-004", "REQ-LIN-005", "REQ-LIN-008", "REQ-LIN-009", "REQ-SAFETY-005"]
+    },
+    {
+      "id": "SR-DC-01",
+      "category": "Data Confidentiality",
+      "standard_ref": "IEC 62443-4-2 CR 4.1",
+      "description": "LIN bus payloads are not encrypted (SL-2 does not require encryption for low-speed automotive buses). Confidentiality is an integrator responsibility for high-sensitivity data.",
+      "status": "integrator",
+      "notes": "LIN bus confidentiality requires hardware encryption at transceiver level; outside cpp-LIN scope"
+    },
+    {
+      "id": "SR-RDF-01",
+      "category": "Restricted Data Flow",
+      "standard_ref": "IEC 62443-4-2 CR 5.1",
+      "description": "No network communication in cpp-LIN. Data flows only over the LIN bus (physical layer) and through in-process API calls.",
+      "status": "met",
+      "evidence": "Architecture: no sockets, no HTTP, no MQTT in library code"
+    },
+    {
+      "id": "SR-TR-01",
+      "category": "Timely Response to Events",
+      "standard_ref": "IEC 62443-4-2 CR 6.1",
+      "description": "Audit logging is not built into cpp-LIN. Integrating system must implement event logging (e.g., ErrNoResponse, E2EError) for incident detection.",
+      "status": "integrator",
+      "notes": "OnError callback (REQ-MASTER-007) provides the hook for integrator logging"
+    },
+    {
+      "id": "SR-TR-02",
+      "category": "Timely Response to Events",
+      "standard_ref": "IEC 62443-4-2 CR 6.2",
+      "description": "Vulnerability reporting and patching follows the process defined in INCIDENT-RESPONSE.md (SLA: Critical 7d patch, High 30d patch).",
+      "status": "met",
+      "evidence": "INCIDENT-RESPONSE.md §4, SECURITY.md"
+    },
+    {
+      "id": "SR-RA-01",
+      "category": "Resource Availability",
+      "standard_ref": "IEC 62443-4-2 CR 7.1",
+      "description": "cpp-LIN uses bounded channels (Chan<T> with configurable depth) with backpressure policies (DropNewest, DropOldest, Block) to prevent resource exhaustion under high load.",
+      "status": "met",
+      "evidence": "REQ-VIRT-013, REQ-RELAY-015, Chan<T>::send_drop_oldest()",
+      "fusa_reqs": ["REQ-VIRT-013", "REQ-RELAY-015"]
+    },
+    {
+      "id": "SR-RA-02",
+      "category": "Resource Availability",
+      "standard_ref": "IEC 62443-4-2 CR 7.2",
+      "description": "Watchdog timer to detect schedule runner starvation is an integrating system responsibility (DSR-06). cpp-LIN provides the stop flag mechanism for graceful shutdown.",
+      "status": "integrator",
+      "integrator_req": "DSR-06"
+    },
+    {
+      "id": "SR-SM-01",
+      "category": "Security Management",
+      "standard_ref": "IEC 62443-4-1 SM-2",
+      "description": "Security vulnerability management process defined in INCIDENT-RESPONSE.md and SECURITY.md, including private reporting, SLA, ASIL impact assessment, and coordinated disclosure.",
+      "status": "met",
+      "evidence": "INCIDENT-RESPONSE.md, SECURITY.md"
+    },
+    {
+      "id": "SR-SM-02",
+      "category": "Security Management",
+      "standard_ref": "IEC 62443-4-1 SM-6",
+      "description": "TARA performed for cpp-LIN SEooC scope. See TARA.md and tara.json for full threat catalogue, CVSS scores, controls, and residual risk acceptance.",
+      "status": "met",
+      "evidence": "TARA.md, tara.json"
+    },
+    {
+      "id": "SR-SM-03",
+      "category": "Security Management",
+      "standard_ref": "IEC 62443-4-1 SR-3",
+      "description": "Security requirements derived from TARA are traced to implementation via fusa:req annotations in source code and .fusa-reqs.json.",
+      "status": "met",
+      "evidence": ".fusa-reqs.json, fusa:req annotations in src/"
+    },
+    {
+      "id": "SR-SD-01",
+      "category": "Secure Development",
+      "standard_ref": "IEC 62443-4-1 SD-1",
+      "description": "Static analysis (clang-tidy) runs on every PR, checking for bugprone-*, clang-analyzer-*, memory safety patterns. Errors are CI gates.",
+      "status": "met",
+      "evidence": ".github/workflows/ci.yml static-analysis job"
+    },
+    {
+      "id": "SR-SD-02",
+      "category": "Secure Development",
+      "standard_ref": "IEC 62443-4-1 SD-4",
+      "description": "Dynamic analysis (ASan + UBSan + ThreadSanitizer) runs on every PR as CI gates. Halt-on-error is enabled.",
+      "status": "met",
+      "evidence": ".github/workflows/ci.yml sanitizers and tsan jobs"
+    },
+    {
+      "id": "SR-SV-01",
+      "category": "Security Verification",
+      "standard_ref": "IEC 62443-4-1 SVV-1",
+      "description": "Security-relevant test cases are tagged with fusa:test annotations and referenced in .fusa-reqs.json. Coverage gate >=70% enforced in CI.",
+      "status": "met",
+      "evidence": "tests/test_safety.cpp, tests/test_relay_adapter.cpp, CI coverage job"
+    }
+  ],
+  "open_items": [
+    {
+      "id": "OI-SEC-01",
+      "description": "Fuzz testing for validate_frame() and ldf::parse() with AFL++ not yet implemented",
+      "target_version": "1.0.0",
+      "priority": "High"
+    },
+    {
+      "id": "OI-SEC-02",
+      "description": "SBOM (Software Bill of Materials) generation not yet automated in CI",
+      "target_version": "1.0.0",
+      "priority": "Medium"
+    },
+    {
+      "id": "OI-SEC-03",
+      "description": "MISRA C++ compliance check not yet integrated",
+      "target_version": "1.0.0",
+      "priority": "Medium"
+    }
+  ]
 }

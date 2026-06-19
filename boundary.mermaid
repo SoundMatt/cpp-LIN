@@ -1,0 +1,88 @@
+---
+title: "cpp-LIN Software Architecture Boundary — ISO 26262-6 §7.4.1"
+---
+graph TD
+    %% ── External environment ────────────────────────────────────────────────
+    HW["LIN Transceiver / HW\n(integrator-owned)"]
+    OS["OS / RTOS\n(threading, clock)"]
+    APP["Application Layer\n(integrator-owned)"]
+    RELAY_ROUTER["RELAY Router\n(external)"]
+    LDF_FILE["LDF File\n(external input)"]
+
+    %% ── cpp-LIN boundary ────────────────────────────────────────────────────
+    subgraph CPP_LIN["cpp-LIN (ASIL-B boundary)"]
+        direction TB
+
+        subgraph CORE["lin:: — Core Protocol"]
+            VF["validate_frame()\nREQ-LIN-001..003,015..017"]
+            PID["protect_id() / verify_pid()\nREQ-LIN-004..007"]
+            CS["calc_checksum()\nREQ-LIN-008..010"]
+            TM["to_message() / from_message()\nREQ-LIN-011..012"]
+        end
+
+        subgraph VIRT["lin::virt:: — Virtual Transport"]
+            BUS["virt::Bus\nREQ-VIRT-001..019"]
+        end
+
+        subgraph SAFETY["lin::safety:: — E2E Protection"]
+            PROT["Protector::protect()\nREQ-SAFETY-001..006"]
+            RECV["Receiver::unwrap()\nREQ-SAFETY-007..015"]
+        end
+
+        subgraph MASTER["lin::master:: — Schedule Runner"]
+            MNODE["master::Node::run()\nREQ-MASTER-001..013"]
+        end
+
+        subgraph SLAVE["lin::slave:: — Response Registration"]
+            SNODE["slave::Node\nREQ-SLAVE-001..008"]
+        end
+
+        subgraph LDF["lin::ldf:: — LDF Parser"]
+            PARSE["ldf::parse()\nREQ-LDF-001..015"]
+        end
+
+        subgraph ADAPT["lin:: — RELAY Adapter"]
+            ADAPT_FN["adapt(IBus)\nREQ-ADAPT-001..005"]
+        end
+
+        subgraph RELAY_MOD["relay:: — RELAY Types"]
+            RTYPES["Protocol, Message, INode\nREQ-RELAY-001..029,051,056,059"]
+        end
+    end
+
+    %% ── Data flows ──────────────────────────────────────────────────────────
+    HW -->|"raw frames\n[physical boundary]"| APP
+    APP -->|"hw_frame\n[ASM-02 validate first]"| VF
+    VF --> BUS
+    BUS --> PID
+    BUS --> CS
+    BUS -->|"Frame"| MNODE
+    BUS -->|"Frame"| SNODE
+    BUS -->|"Frame"| TM
+
+    APP -->|"payload\n[safety-critical]"| PROT
+    PROT -->|"protected_payload"| BUS
+    BUS -->|"protected_payload"| RECV
+    RECV -->|"verified_payload"| APP
+
+    LDF_FILE -->|"LDF text"| PARSE
+    PARSE -->|"DB{frames, schedule}"| MNODE
+
+    MNODE -->|"std::error_code"| APP
+    SNODE -->|"RegisteredIDs"| APP
+
+    TM -->|"relay::Message"| ADAPT_FN
+    ADAPT_FN -->|"INode*"| RELAY_ROUTER
+    RELAY_ROUTER -->|"relay::Message"| ADAPT_FN
+
+    OS -->|"std::thread\nstd::mutex\nstd::chrono"| BUS
+    OS -->|"std::atomic<bool> stop"| MNODE
+
+    %% ── Styling ─────────────────────────────────────────────────────────────
+    classDef boundary fill:#e8f4f8,stroke:#2c7bb6,stroke-width:2px
+    classDef external fill:#fff3cd,stroke:#856404,stroke-width:1px,stroke-dasharray:4 4
+    classDef safety_comp fill:#d4edda,stroke:#155724,stroke-width:2px
+
+    class CORE,VIRT,MASTER,SLAVE,LDF,ADAPT,RELAY_MOD boundary
+    class SAFETY safety_comp
+    class HW,OS,APP,RELAY_ROUTER,LDF_FILE external

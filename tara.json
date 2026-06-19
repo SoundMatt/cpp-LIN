@@ -1,0 +1,106 @@
+{
+  "version": "1",
+  "standard": "ISO/SAE 21434:2021",
+  "security_level": "SL-2",
+  "component": "cpp-LIN",
+  "date": "2026-06-19",
+  "assets": [
+    {"id": "A-01", "name": "LIN frame payload", "integrity": "High", "availability": "High", "confidentiality": "Low"},
+    {"id": "A-02", "name": "Frame ID / PID", "integrity": "High", "availability": "Medium", "confidentiality": "Low"},
+    {"id": "A-03", "name": "E2E sequence counter", "integrity": "High", "availability": "Medium", "confidentiality": "Low"},
+    {"id": "A-04", "name": "E2E CRC / header bytes", "integrity": "High", "availability": "Medium", "confidentiality": "Low"},
+    {"id": "A-05", "name": "LDF configuration data", "integrity": "High", "availability": "Medium", "confidentiality": "Low"},
+    {"id": "A-06", "name": "Master schedule table", "integrity": "High", "availability": "High", "confidentiality": "Low"},
+    {"id": "A-07", "name": "Bus subscriber registry", "integrity": "Medium", "availability": "Medium", "confidentiality": "Low"},
+    {"id": "A-08", "name": "Heap and channel buffers", "integrity": "Medium", "availability": "High", "confidentiality": "Low"}
+  ],
+  "threats": [
+    {
+      "id": "THREAT-01",
+      "name": "LIN Bus Frame Injection",
+      "stride": ["Spoofing", "Tampering"],
+      "assets": ["A-01", "A-02"],
+      "cvss": "AV:P/AC:H/PR:N/UI:N/S:U/C:N/I:H/A:L",
+      "cvss_score": 5.3,
+      "risk_rating": "High",
+      "controls": ["SC-01", "SC-02", "SC-05"],
+      "residual_risk": "Low"
+    },
+    {
+      "id": "THREAT-02",
+      "name": "Frame Replay Attack",
+      "stride": ["Tampering", "Elevation of Privilege"],
+      "assets": ["A-01", "A-03"],
+      "cvss": "AV:P/AC:H/PR:N/UI:N/S:U/C:N/I:H/A:N",
+      "cvss_score": 4.2,
+      "risk_rating": "High",
+      "controls": ["SC-03"],
+      "residual_risk": "Low"
+    },
+    {
+      "id": "THREAT-03",
+      "name": "Resource Exhaustion / Denial of Service",
+      "stride": ["Denial of Service"],
+      "assets": ["A-06", "A-08"],
+      "cvss": "AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H",
+      "cvss_score": 5.5,
+      "risk_rating": "Medium",
+      "controls": ["SC-04", "SC-06"],
+      "residual_risk": "Medium"
+    },
+    {
+      "id": "THREAT-04",
+      "name": "E2E Header Bypass (DataID/SourceID corruption)",
+      "stride": ["Tampering"],
+      "assets": ["A-04"],
+      "cvss": "AV:P/AC:H/PR:N/UI:N/S:U/C:N/I:H/A:N",
+      "cvss_score": 4.2,
+      "risk_rating": "Medium",
+      "controls": ["SC-05"],
+      "residual_risk": "Low"
+    },
+    {
+      "id": "THREAT-05",
+      "name": "LDF File Tampering",
+      "stride": ["Tampering", "Spoofing"],
+      "assets": ["A-05", "A-06"],
+      "cvss": "AV:L/AC:H/PR:H/UI:N/S:U/C:N/I:H/A:M",
+      "cvss_score": 4.4,
+      "risk_rating": "Medium",
+      "controls": ["SC-07"],
+      "residual_risk": "Low"
+    },
+    {
+      "id": "THREAT-06",
+      "name": "Timing Attack on Schedule Runner",
+      "stride": ["Denial of Service"],
+      "assets": ["A-06"],
+      "cvss": "AV:L/AC:H/PR:H/UI:N/S:U/C:N/I:N/A:H",
+      "cvss_score": 4.1,
+      "risk_rating": "Low",
+      "controls": ["SC-06"],
+      "residual_risk": "Low"
+    },
+    {
+      "id": "THREAT-07",
+      "name": "Data Race in Concurrent Bus Access",
+      "stride": ["Tampering"],
+      "assets": ["A-01", "A-07"],
+      "cvss": "AV:L/AC:H/PR:L/UI:N/S:U/C:N/I:H/A:H",
+      "cvss_score": 6.3,
+      "risk_rating": "Low",
+      "controls": ["SC-08"],
+      "residual_risk": "Low"
+    }
+  ],
+  "controls": [
+    {"id": "SC-01", "name": "Frame ID boundary check", "standard_ref": "IEC 62443-4-2 CR 3.4", "impl": "validate_frame()"},
+    {"id": "SC-02", "name": "PID parity verification", "standard_ref": "ISO 26262-6 REQ-LIN-006/007", "impl": "verify_pid()"},
+    {"id": "SC-03", "name": "E2E sequence counter", "standard_ref": "IEC 62443-4-2 CR 3.2", "impl": "safety::Receiver::unwrap()"},
+    {"id": "SC-04", "name": "Bounded channel depth", "standard_ref": "IEC 62443-4-2 CR 7.1", "impl": "Chan<T> backpressure"},
+    {"id": "SC-05", "name": "CRC-16/CCITT-FALSE E2E", "standard_ref": "IEC 62443-4-2 CR 3.4", "impl": "safety::Protector::protect()"},
+    {"id": "SC-06", "name": "Watchdog integration", "standard_ref": "IEC 62443-4-2 CR 7.2", "impl": "DSR-06 integrator watchdog"},
+    {"id": "SC-07", "name": "LDF integrity at load", "standard_ref": "IEC 62443-4-2 CR 3.3", "impl": "DSR-05 secure boot hash"},
+    {"id": "SC-08", "name": "Thread-safe bus operations", "standard_ref": "IEC 62443-4-2 CR 2.1", "impl": "shared_mutex + TSan CI gate"}
+  ]
+}
