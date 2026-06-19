@@ -1,0 +1,42 @@
+# Copyright (c) 2026 Matt Jones. All rights reserved.
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0.
+#
+# docker-compose.yml for cpp-LIN development and testing.
+
+version: "3.9"
+
+services:
+  # Run the full test suite
+  test:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: test
+    container_name: cpp-lin-test
+    environment:
+      - ASAN_OPTIONS=halt_on_error=1
+      - UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1
+
+  # Interactive development shell with sources mounted
+  dev:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: build
+    container_name: cpp-lin-dev
+    volumes:
+      - ..:/src
+    working_dir: /src
+    stdin_open: true
+    tty: true
+    entrypoint: /bin/bash
+
+  # CLI smoke test — pass RELAY convert vectors
+  cli:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: cli
+    container_name: cpp-lin-cli
+    command: ["version"]

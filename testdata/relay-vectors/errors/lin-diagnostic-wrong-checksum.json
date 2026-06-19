@@ -1,0 +1,13 @@
+{
+  "protocol": "LIN",
+  "protocol_int": 3,
+  "id": "60",
+  "payload": "aGVsbG8=",
+  "meta": {
+    "lin.checksum": "99",
+    "lin.checksum_type": "1"
+  },
+  "spec_version": "1.10",
+  "expected_error": "ErrInvalidFrame",
+  "error_reason": "diagnostic frames (0x3C/0x3D) must use Classic checksum (type 0)"
+}

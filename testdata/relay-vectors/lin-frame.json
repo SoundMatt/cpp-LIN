@@ -1,0 +1,11 @@
+{
+  "protocol": "LIN",
+  "protocol_int": 3,
+  "id": "16",
+  "payload": "qrs=",
+  "meta": {
+    "lin.checksum": "73",
+    "lin.checksum_type": "1"
+  },
+  "spec_version": "1.10"
+}

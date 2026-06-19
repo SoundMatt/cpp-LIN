@@ -1,0 +1,124 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build-release:
+    name: Build release binaries (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            artifact: cpp-lin-cli-linux-amd64
+            ext: ""
+          - os: macos-14
+            artifact: cpp-lin-cli-macos-arm64
+            ext: ""
+          - os: windows-2022
+            artifact: cpp-lin-cli-windows-amd64
+            ext: ".exe"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up MSVC (Windows)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Configure
+        shell: bash
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_STANDARD=17
+
+      - name: Build CLI
+        run: cmake --build build --parallel --target cpp-lin-cli --config Release
+
+      - name: Run tests
+        run: ctest --test-dir build --output-on-failure -j1
+
+      - name: Stage artifact (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          cp build/cli/cpp-lin-cli ${{ matrix.artifact }}
+          chmod +x ${{ matrix.artifact }}
+
+      - name: Stage artifact (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Copy-Item build\cli\Release\cpp-lin-cli.exe ${{ matrix.artifact }}.exe
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}${{ matrix.ext }}
+
+  github-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-22.04
+    needs: build-release
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/
+
+      - name: Flatten dist directory
+        run: find dist -type f -exec mv {} dist/ \; || true
+
+      - name: Extract version from tag
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
+      - name: Generate checksums
+        working-directory: dist
+        run: |
+          sha256sum cpp-lin-cli-* > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "cpp-LIN ${{ github.ref_name }}"
+          tag_name: ${{ github.ref_name }}
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          body: |
+            ## cpp-LIN ${{ github.ref_name }}
+
+            C++ LIN bus library — RELAY-conformant, ISO 26262 ASIL-B.
+
+            ### Assets
+
+            | Platform | Binary |
+            |----------|--------|
+            | Linux (amd64) | `cpp-lin-cli-linux-amd64` |
+            | macOS (arm64) | `cpp-lin-cli-macos-arm64` |
+            | Windows (amd64) | `cpp-lin-cli-windows-amd64.exe` |
+
+            ### Verification
+
+            ```sh
+            sha256sum --check SHA256SUMS.txt
+            ```
+
+            ### What's Changed
+
+            See [CHANGELOG](https://github.com/SoundMatt/cpp-LIN/blob/main/CHANGELOG.md)
+            for the full list of changes in this release.
+          files: |
+            dist/cpp-lin-cli-linux-amd64
+            dist/cpp-lin-cli-macos-arm64
+            dist/cpp-lin-cli-windows-amd64.exe
+            dist/SHA256SUMS.txt
