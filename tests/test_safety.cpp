@@ -191,7 +191,7 @@ TEST_CASE("Protect is safe for concurrent calls", "[safety][REQ-SAFETY-014]") {
     CHECK(ok.load() == 400);
 }
 
-TEST_CASE("crc16: known vector '123456789' → 0x29B1", "[safety][REQ-SAFETY-005]") {
+TEST_CASE("crc16: known vector '123456789' -> 0x29B1", "[safety][REQ-SAFETY-005]") {
     const uint8_t data[] = {'1','2','3','4','5','6','7','8','9'};
     CHECK(crc16(data, 9) == 0x29B1);
 }
