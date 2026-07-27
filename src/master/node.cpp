@@ -22,11 +22,11 @@ Node::Node(std::shared_ptr<IMasterBus> bus)
 // fusa:req REQ-MASTER-010 REQ-MASTER-011 REQ-MASTER-012
 std::error_code Node::set_schedule(std::vector<ScheduleEntry> entries) {
     if (entries.empty())
-        return relay::make_error_code(relay::Errc::payload_too_large);  // empty schedule
+        return lin::make_error_code(lin::Errc::invalid_frame);  // empty schedule
 
     for (const auto& e : entries) {
         if (e.id > kLINMaxID)
-            return relay::make_error_code(relay::Errc::payload_too_large);
+            return lin::make_error_code(lin::Errc::invalid_frame);
     }
 
     // defensive copy stored
@@ -53,7 +53,7 @@ std::pair<Frame, std::error_code> Node::send_header(uint8_t id) {
 // fusa:req REQ-MASTER-007 REQ-MASTER-008 REQ-MASTER-009 REQ-MASTER-013
 std::error_code Node::run(const std::atomic<bool>& stop) {
     if (schedule_.empty())
-        return relay::make_error_code(relay::Errc::payload_too_large);
+        return lin::make_error_code(lin::Errc::invalid_frame);
 
     while (!stop.load()) {
         for (const auto& slot : schedule_) {

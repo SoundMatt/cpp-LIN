@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "version.hpp"
 #include <lin/lin.hpp>
 #include <lin/relay.hpp>
 #include <algorithm>
@@ -132,7 +133,11 @@ inline lin::Frame parse_frame_json(const std::string& json) {
     lin::Frame f{};
     uint32_t id_val = 0;
     if (!detail::extract_u32(json, "id", id_val))
-        throw std::runtime_error("ErrInvalidInput: missing or invalid 'id'");
+        // Not a spec §5 sentinel: JSON that doesn't even parse into a
+        // lin.Frame never reaches lin::validate_frame(), so there is no
+        // ErrInvalidFrame to name here — describe the parse failure plainly
+        // instead of fabricating a sentinel-looking name that doesn't exist.
+        throw std::runtime_error("invalid input JSON: missing or invalid 'id' field");
     f.id = static_cast<uint8_t>(id_val);
     detail::extract_bytes(json, "data", f.data);
     uint32_t ct = 0;
@@ -173,28 +178,41 @@ inline std::string message_to_json(const relay::Message& m) {
 // fusa:req REQ-CLI-001
 inline std::string version_json() {
     return "{"
-           "\"tool\":\"cpp-LIN\","
+           "\"tool\":\"cpp-lin\","
            "\"protocol\":\"LIN\","
            "\"protocol_int\":3,"
-           "\"version\":\"0.1.0\","
+           "\"version\":\"" + std::string(kToolVersion) + "\","
            "\"spec_version\":\"1.11\","
            "\"language\":\"cpp\","
            "\"runtime\":\"c++17\""
            "}";
 }
 
+// fusa:req REQ-CLI-001
+// Human-readable rendering of version_json() for `version --format text` (spec §11.1).
+inline std::string version_text() {
+    std::ostringstream o;
+    o << "tool:      cpp-lin\n"
+      << "protocol:  LIN\n"
+      << "version:   " << kToolVersion << "\n"
+      << "spec:      1.11\n"
+      << "language:  cpp\n"
+      << "runtime:   c++17\n";
+    return o.str();
+}
+
 // fusa:req REQ-CLI-002
 inline std::string capabilities_json() {
     return "{"
            "\"kind\":\"capabilities\","
-           "\"tool\":\"cpp-LIN\","
+           "\"tool\":\"cpp-lin\","
            "\"protocol\":\"LIN\","
            "\"protocol_int\":3,"
-           "\"version\":\"0.1.0\","
+           "\"version\":\"" + std::string(kToolVersion) + "\","
            "\"spec_version\":\"1.11\","
            "\"commands\":[\"version\",\"capabilities\",\"status\",\"convert\"],"
-           "\"transports\":[\"LIN\"],"
-           "\"features\":[\"ldf\",\"e2e\",\"master\",\"slave\",\"virtual\"],"
+           "\"transports\":[\"virtual\"],"
+           "\"features\":[\"ldf\",\"e2e\",\"master\",\"slave\",\"virtual\",\"mock\"],"
            "\"interfaces\":[\"IBus\",\"IMasterBus\",\"INode\"],"
            "\"optional_interfaces\":[\"IHealthProvider\",\"IMetricsProvider\",\"IDrainer\"],"
            "\"adapt\":true"
@@ -205,13 +223,26 @@ inline std::string capabilities_json() {
 inline std::string status_json() {
     return "{"
            "\"protocol\":\"LIN\","
-           "\"tool\":\"cpp-LIN\","
-           "\"version\":\"0.1.0\","
+           "\"tool\":\"cpp-lin\","
+           "\"version\":\"" + std::string(kToolVersion) + "\","
            "\"healthy\":true,"
            "\"connected\":false,"
            "\"endpoint\":\"\","
            "\"details\":{}"
            "}";
+}
+
+// fusa:req REQ-CLI-003
+// Human-readable rendering of status_json() for `status --format text` (spec §11.1).
+inline std::string status_text() {
+    std::ostringstream o;
+    o << "protocol:   LIN\n"
+      << "tool:       cpp-lin\n"
+      << "version:    " << kToolVersion << "\n"
+      << "healthy:    true\n"
+      << "connected:  false\n"
+      << "endpoint:   (none)\n";
+    return o.str();
 }
 
 } // namespace cli

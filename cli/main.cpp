@@ -18,9 +18,43 @@
 #include <iostream>
 #include <string>
 
-static int cmd_version()      { std::cout << cli::version_json()      << "\n"; return 0; }
+// Parses an optional "--format <value>" flag from argv[2..argc) for commands
+// that accept it (spec §11.1: `version [--format text|json]`, `status
+// [--format text|json]`). Defaults `fmt` to "json". Any other argument
+// (including an unrecognized --format value) is an invalid-args error: the
+// caller is responsible for validating `fmt` against the command's allowed
+// set and exiting 2 per spec §11.1/§11.3.
+static bool parse_format_flag(int argc, char* argv[], std::string& fmt) {
+    fmt = "json";
+    for (int i = 2; i < argc; ++i) {
+        std::string arg = argv[i];
+        if (arg == "--format" && i + 1 < argc) {
+            fmt = argv[++i];
+        } else {
+            std::cerr << "ErrInvalidArgs: unrecognized argument '" << arg << "'\n";
+            return false;
+        }
+    }
+    return true;
+}
+
+// fusa:req REQ-CLI-001
+static int cmd_version(const std::string& fmt) {
+    if (fmt == "json") { std::cout << cli::version_json() << "\n"; return 0; }
+    if (fmt == "text") { std::cout << cli::version_text();          return 0; }
+    std::cerr << "ErrInvalidArgs: unsupported --format '" << fmt << "' (want text|json)\n";
+    return 2;
+}
+
 static int cmd_capabilities() { std::cout << cli::capabilities_json() << "\n"; return 0; }
-static int cmd_status()       { std::cout << cli::status_json()        << "\n"; return 0; }
+
+// fusa:req REQ-CLI-003
+static int cmd_status(const std::string& fmt) {
+    if (fmt == "json") { std::cout << cli::status_json() << "\n"; return 0; }
+    if (fmt == "text") { std::cout << cli::status_text();          return 0; }
+    std::cerr << "ErrInvalidArgs: unsupported --format '" << fmt << "' (want text|json)\n";
+    return 2;
+}
 
 // fusa:req REQ-CLI-006
 static int cmd_convert(const std::string& protocol) {
@@ -44,7 +78,10 @@ static int cmd_convert(const std::string& protocol) {
     try {
         lin::validate_frame(f);
     } catch (const lin::ErrInvalidFrame& e) {
-        std::cerr << "ErrInvalidInput: " << e.what() << "\n";
+        // spec §11.2: convert MUST write the sentinel error name (§5) to
+        // stderr — the thrown type here is lin::ErrInvalidFrame, so that is
+        // the name relay interop/relay conform expect, not a made-up one.
+        std::cerr << "ErrInvalidFrame: " << e.what() << "\n";
         return 1;
     }
 
@@ -64,9 +101,17 @@ int main(int argc, char* argv[]) {
 
     std::string cmd = argv[1];
 
-    if (cmd == "version")      return cmd_version();
+    if (cmd == "version") {
+        std::string fmt;
+        if (!parse_format_flag(argc, argv, fmt)) return 2;
+        return cmd_version(fmt);
+    }
     if (cmd == "capabilities") return cmd_capabilities();
-    if (cmd == "status")       return cmd_status();
+    if (cmd == "status") {
+        std::string fmt;
+        if (!parse_format_flag(argc, argv, fmt)) return 2;
+        return cmd_status(fmt);
+    }
 
     if (cmd == "convert") {
         std::string protocol;

@@ -8,6 +8,7 @@ add_executable(cpplin_tests
     test_master.cpp
     test_slave.cpp
     test_cli.cpp
+    test_mock.cpp
 )
 
 target_link_libraries(cpplin_tests
@@ -20,6 +21,7 @@ target_include_directories(cpplin_tests
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../include
         ${CMAKE_CURRENT_SOURCE_DIR}/../cli
+        ${CPPLIN_GENERATED_DIR}/cli
 )
 
 include(CTest)

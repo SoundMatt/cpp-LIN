@@ -270,6 +270,16 @@ TEST_CASE("ErrNoResponse is throwable", "[lin][REQ-LIN-014][REQ-LIN-021]") {
     REQUIRE_THROWS_AS(throw ErrNoResponse(), ErrNoResponse);
 }
 
+TEST_CASE("lin::Errc::invalid_frame is distinct from every relay sentinel", "[lin][REQ-LIN-015]") {
+    auto err = make_error_code(Errc::invalid_frame);
+    CHECK(err);
+    CHECK(err != relay::ErrClosed());
+    CHECK(err != relay::ErrNotConnected());
+    CHECK(err != relay::ErrTimeout());
+    CHECK(err != relay::ErrPayloadTooLarge());
+    CHECK_FALSE(err.message().empty());
+}
+
 TEST_CASE("kSpecVersion is non-empty", "[lin]") {
     CHECK(!std::string(kSpecVersion).empty());
 }

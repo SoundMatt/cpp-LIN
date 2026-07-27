@@ -33,7 +33,7 @@ std::shared_ptr<Bus> Bus::create() {
 std::error_code Bus::do_publish(uint8_t id, std::vector<uint8_t> data, ChecksumType ct) {
     if (id > kLINMaxID) {
         error_count_.fetch_add(1);
-        return relay::make_error_code(relay::Errc::payload_too_large);
+        return lin::make_error_code(lin::Errc::invalid_frame);
     }
 
     std::unique_lock<std::shared_mutex> lk(mu_);
@@ -65,7 +65,7 @@ std::error_code Bus::publish_classic(uint8_t id, std::vector<uint8_t> data) {
 std::pair<Frame, std::error_code> Bus::send_header(uint8_t id) {
     if (id > kLINMaxID) {
         error_count_.fetch_add(1);
-        return {Frame{}, relay::make_error_code(relay::Errc::payload_too_large)};
+        return {Frame{}, lin::make_error_code(lin::Errc::invalid_frame)};
     }
 
     std::shared_lock<std::shared_mutex> lk(mu_);

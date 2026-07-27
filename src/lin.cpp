@@ -65,6 +65,33 @@ void validate_frame(const Frame& f) {
         throw ErrInvalidFrame("diagnostic frame 0x" + [f]{ char buf[8]; std::snprintf(buf, sizeof(buf), "%02X", f.id); return std::string(buf); }() + " must use classic checksum");
 }
 
+// ── LIN error category ── REQ-LIN-015 ────────────────────────────────────────
+
+namespace {
+
+class LinErrorCategory : public std::error_category {
+public:
+    const char* name() const noexcept override { return "lin"; }
+
+    std::string message(int ev) const override {
+        switch (static_cast<Errc>(ev)) {
+        case Errc::invalid_frame: return "lin: invalid frame";
+        default:                  return "lin: unknown error";
+        }
+    }
+};
+
+} // anonymous namespace
+
+const std::error_category& error_category() noexcept {
+    static LinErrorCategory cat;
+    return cat;
+}
+
+std::error_code make_error_code(Errc e) noexcept {
+    return {static_cast<int>(e), error_category()};
+}
+
 // ── to_message / from_message ── REQ-LIN-011 REQ-LIN-012 ────────────────────
 
 relay::Message to_message(const Frame& f) {
@@ -118,16 +145,22 @@ public:
     relay::Protocol protocol() const noexcept override { return relay::Protocol::LIN; }
 
     // fusa:req REQ-ADAPT-002 REQ-ADAPT-003
+    //
+    // relay::INode::send() (§10.1) is documented to return only ErrClosed,
+    // ErrNotConnected, ErrTimeout, or ErrPayloadTooLarge, so an invalid ID is
+    // approximated as ErrPayloadTooLarge here rather than lin::Errc::invalid_frame
+    // (which would be correct for IBus::publish() directly, but isn't one of
+    // the relay.Node sentinels). Delegate ID parsing to from_message() — the
+    // single source of truth for LIN ID parsing/validation — instead of
+    // re-implementing it inline.
     std::error_code send(relay::Message msg) override {
-        unsigned long long id_val{};
+        Frame f;
         try {
-            id_val = std::stoull(msg.id);
-        } catch (...) {
+            f = from_message(msg);
+        } catch (const ErrInvalidFrame&) {
             return relay::make_error_code(relay::Errc::payload_too_large);
         }
-        if (id_val > kLINMaxID)
-            return relay::make_error_code(relay::Errc::payload_too_large);
-        return bus_->publish(static_cast<uint8_t>(id_val), std::move(msg.payload));
+        return bus_->publish(f.id, std::move(f.data));
     }
 
     // fusa:req REQ-ADAPT-004
@@ -142,7 +175,15 @@ public:
         int depth = cfg.effective_depth(64);
         auto out = std::make_shared<Chan<relay::Message>>(static_cast<std::size_t>(depth));
 
-        std::thread([this, frame_ch = std::move(frames), out,
+        // REQ-ADAPT-004: per spec §10.5.2 point 7, the Seq counter is owned by
+        // the subscription goroutine/thread, not shared across subscriptions or
+        // Adapt() calls. Capturing it by shared_ptr (rather than the adapter's
+        // `this`) also means the thread never dereferences the LinAdapter once
+        // it may have been destroyed — the thread only touches frame_ch/out/seq,
+        // all of which it owns shared references to.
+        auto seq = std::make_shared<std::atomic<uint64_t>>(0);
+
+        std::thread([frame_ch = std::move(frames), out, seq,
                      bp = cfg.back_pressure]() mutable
         {
             while (true) {
@@ -151,7 +192,7 @@ public:
 
                 relay::Message msg = to_message(*opt_f);
                 msg.timestamp = std::chrono::system_clock::now();
-                msg.seq = ++seq_;
+                msg.seq = ++(*seq);
 
                 switch (bp) {
                 case relay::BackPressurePolicy::DropNewest:
@@ -176,7 +217,6 @@ public:
 
 private:
     std::shared_ptr<IBus> bus_;
-    std::atomic<uint64_t> seq_{0};
 };
 
 } // anonymous namespace

@@ -248,7 +248,7 @@ jobs:
 
       - name: cpfusa init
         working-directory: cpp-LIN
-        run: ../cpp-FuSa/build/cpfusa init --name cpp-LIN --standard iso26262 --asil ASIL-B --project-version 0.1.0 --force || true
+        run: ../cpp-FuSa/build/cpfusa init --name cpp-LIN --standard iso26262 --asil ASIL-B --project-version 0.4.0 --force || true
 
       - name: cpfusa check
         working-directory: cpp-LIN
@@ -448,7 +448,7 @@ jobs:
 
       - name: cpfusa init
         working-directory: cpp-LIN
-        run: ../cpp-FuSa/build/cpfusa init --name cpp-LIN --standard iso26262 --asil ASIL-B --project-version 0.1.0 --force || true
+        run: ../cpp-FuSa/build/cpfusa init --name cpp-LIN --standard iso26262 --asil ASIL-B --project-version 0.4.0 --force || true
 
       - name: Generate SARIF report
         working-directory: cpp-LIN

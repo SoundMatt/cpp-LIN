@@ -107,6 +107,23 @@ inline std::error_code ErrNotConnected()    noexcept { return relay::ErrNotConne
 inline std::error_code ErrTimeout()         noexcept { return relay::ErrTimeout(); }
 inline std::error_code ErrPayloadTooLarge() noexcept { return relay::ErrPayloadTooLarge(); }
 
+// ── LIN-specific error category (spec §5.2, §5.3, §5.4) ──────────────────────
+//
+// A structurally invalid frame (bad ID bits, out-of-range ID) is distinct from
+// a too-large payload (§5.3): "ErrInvalidFrame and ErrPayloadTooLarge are
+// distinct ... ValidateFrame MUST return ErrInvalidFrame; it MUST NOT return
+// ErrPayloadTooLarge." IBus/IMasterBus (§8.3) are LIN's own protocol interface,
+// not the relay.Node interface, so — like CAN's ErrInvalidFrame (§5.4, "not a
+// relay sentinel") — this code is not mapped to any relay::Errc value.
+
+// fusa:req REQ-LIN-015
+enum class Errc : int {
+    invalid_frame = 1,
+};
+
+const std::error_category& error_category() noexcept;
+std::error_code            make_error_code(Errc e) noexcept;
+
 // ── Free functions ────────────────────────────────────────────────────────────
 
 // Computes the Protected Identifier (PID) for a 6-bit LIN frame ID.
@@ -205,3 +222,9 @@ using IDrainer        = relay::IDrainer;
 std::unique_ptr<relay::INode> adapt(std::shared_ptr<IBus> bus);
 
 } // namespace lin
+
+// fusa:req REQ-LIN-015 — allow implicit construction of std::error_code from lin::Errc.
+namespace std {
+template<>
+struct is_error_code_enum<lin::Errc> : true_type {};
+} // namespace std
