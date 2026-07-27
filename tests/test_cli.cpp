@@ -95,7 +95,7 @@ TEST_CASE("capabilities_json: transports lists a transport backend, not the prot
     CHECK(json.find("\"transports\":[\"LIN\"]") == std::string::npos);
 }
 
-TEST_CASE("capabilities_json: features lists the mock module (spec §13.7.1)", "[cli][REQ-CLI-002]") {
+TEST_CASE("capabilities_json: features lists the mock module (spec 13.7.1)", "[cli][REQ-CLI-002]") {
     auto json = capabilities_json();
     CHECK(json.find("\"mock\"") != std::string::npos);
 }
