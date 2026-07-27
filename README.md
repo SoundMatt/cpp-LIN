@@ -17,6 +17,7 @@ of [go-LIN](https://github.com/SoundMatt/go-LIN) and is patterned after
 ### Features
 
 - **Virtual bus** — in-process, thread-safe LIN bus for testing and simulation
+- **Mock module** — RELAY spec §13.7.1 canonical `mock` namespace (`lin::mock::Bus`)
 - **LDF parser** — parse LIN Description Files (`.ldf`), decode signals
 - **Master node** — schedule table runner with configurable slot timing
 - **Slave node** — publish response payloads for specific LIN frame IDs
@@ -52,6 +53,7 @@ include/lin/
   relay.hpp          — RELAY v1.11 types (Protocol, Message, INode, …)
   lin.hpp            — IBus, IMasterBus, Frame, Filter, free functions
   virtual/bus.hpp    — In-process virtual LIN bus
+  mock/mock.hpp      — RELAY spec §13.7.1 canonical `mock` module (alias of virtual::Bus)
   safety/e2e.hpp     — E2E Protector / Receiver
   ldf/parser.hpp     — LDF file parser / signal decoder
   master/node.hpp    — Master schedule runner

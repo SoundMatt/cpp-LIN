@@ -18,8 +18,11 @@ Node::Node(std::shared_ptr<IBus> bus)
 
 // fusa:req REQ-SLAVE-002 REQ-SLAVE-003 REQ-SLAVE-004 REQ-SLAVE-008
 std::error_code Node::set_response(uint8_t id, std::vector<uint8_t> data) {
+    // Same mis-mapping as virtual::Bus::do_publish()/send_header() and
+    // master::Node::set_schedule()/run() — out-of-range ID is a structural
+    // violation (§5.3 ErrInvalidFrame), not a payload-size violation.
     if (id > kLINMaxID)
-        return relay::make_error_code(relay::Errc::payload_too_large);
+        return lin::make_error_code(lin::Errc::invalid_frame);
 
     auto err = bus_->publish(id, data);
     if (err) return err;

@@ -63,11 +63,18 @@ TEST_CASE("message_to_json: timestamp is zero string", "[cli][REQ-CLI-005]") {
 
 TEST_CASE("version_json: contains expected fields", "[cli][REQ-CLI-001]") {
     auto json = version_json();
-    CHECK(json.find("cpp-LIN") != std::string::npos);
+    CHECK(json.find("\"tool\":\"cpp-lin\"") != std::string::npos);
     CHECK(json.find("\"protocol\":\"LIN\"") != std::string::npos);
     CHECK(json.find("\"protocol_int\":3") != std::string::npos);
     CHECK(json.find("\"version\"") != std::string::npos);
     CHECK(json.find("\"spec_version\"") != std::string::npos);
+}
+
+TEST_CASE("version_text: contains expected fields", "[cli][REQ-CLI-001]") {
+    auto text = version_text();
+    CHECK(text.find("cpp-lin") != std::string::npos);
+    CHECK(text.find("LIN") != std::string::npos);
+    CHECK(text.find(kToolVersion) != std::string::npos);
 }
 
 // ── capabilities_json ── REQ-CLI-002 ─────────────────────────────────────────
@@ -75,18 +82,37 @@ TEST_CASE("version_json: contains expected fields", "[cli][REQ-CLI-001]") {
 TEST_CASE("capabilities_json: contains expected fields", "[cli][REQ-CLI-002]") {
     auto json = capabilities_json();
     CHECK(json.find("capabilities") != std::string::npos);
+    CHECK(json.find("\"tool\":\"cpp-lin\"") != std::string::npos);
     CHECK(json.find("\"protocol\":\"LIN\"") != std::string::npos);
     CHECK(json.find("\"protocol_int\":3") != std::string::npos);
     CHECK(json.find("convert") != std::string::npos);
     CHECK(json.find("version") != std::string::npos);
 }
 
+TEST_CASE("capabilities_json: transports lists a transport backend, not the protocol", "[cli][REQ-CLI-002]") {
+    auto json = capabilities_json();
+    CHECK(json.find("\"transports\":[\"virtual\"]") != std::string::npos);
+    CHECK(json.find("\"transports\":[\"LIN\"]") == std::string::npos);
+}
+
+TEST_CASE("capabilities_json: features lists the mock module (spec §13.7.1)", "[cli][REQ-CLI-002]") {
+    auto json = capabilities_json();
+    CHECK(json.find("\"mock\"") != std::string::npos);
+}
+
 // ── status_json ── REQ-CLI-003 ────────────────────────────────────────────────
 
 TEST_CASE("status_json: contains expected fields", "[cli][REQ-CLI-003]") {
     auto json = status_json();
+    CHECK(json.find("\"tool\":\"cpp-lin\"") != std::string::npos);
     CHECK(json.find("\"protocol\":\"LIN\"") != std::string::npos);
     CHECK(json.find("\"healthy\":true") != std::string::npos);
+}
+
+TEST_CASE("status_text: contains expected fields", "[cli][REQ-CLI-003]") {
+    auto text = status_text();
+    CHECK(text.find("cpp-lin") != std::string::npos);
+    CHECK(text.find("healthy") != std::string::npos);
 }
 
 // ── round-trip: parse → to_message → message_to_json ─────────────────────────

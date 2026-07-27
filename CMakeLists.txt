@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 project(cpplin
-    VERSION 0.1.0
+    VERSION 0.4.0
     DESCRIPTION "C++ LIN bus library — RELAY-conformant, ISO 26262 ASIL-B"
     HOMEPAGE_URL "https://github.com/SoundMatt/cpp-LIN"
     LANGUAGES CXX
@@ -33,6 +33,17 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(cmake/FetchDeps.cmake)
+
+# ── Generated headers ─────────────────────────────────────────────────────────
+# cli/version.hpp is generated from PROJECT_VERSION so the CLI's self-reported
+# version (§12.1) can't drift from the project's own version a second time
+# (see the v0.1.0-stale-for-two-releases fix).
+set(CPPLIN_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/cli/version.hpp.in
+    ${CPPLIN_GENERATED_DIR}/cli/version.hpp
+    @ONLY
+)
 
 # ── Library ───────────────────────────────────────────────────────────────────
 
