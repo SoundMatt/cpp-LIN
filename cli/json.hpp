@@ -182,7 +182,7 @@ inline std::string version_json() {
            "\"protocol\":\"LIN\","
            "\"protocol_int\":3,"
            "\"version\":\"" + std::string(kToolVersion) + "\","
-           "\"spec_version\":\"1.11\","
+           "\"spec_version\":\"1.14\","
            "\"language\":\"cpp\","
            "\"runtime\":\"c++17\""
            "}";
@@ -195,7 +195,7 @@ inline std::string version_text() {
     o << "tool:      cpp-lin\n"
       << "protocol:  LIN\n"
       << "version:   " << kToolVersion << "\n"
-      << "spec:      1.11\n"
+      << "spec:      1.14\n"
       << "language:  cpp\n"
       << "runtime:   c++17\n";
     return o.str();
@@ -209,7 +209,7 @@ inline std::string capabilities_json() {
            "\"protocol\":\"LIN\","
            "\"protocol_int\":3,"
            "\"version\":\"" + std::string(kToolVersion) + "\","
-           "\"spec_version\":\"1.11\","
+           "\"spec_version\":\"1.14\","
            "\"commands\":[\"version\",\"capabilities\",\"status\",\"convert\"],"
            "\"transports\":[\"virtual\"],"
            "\"features\":[\"ldf\",\"e2e\",\"master\",\"slave\",\"virtual\",\"mock\"],"

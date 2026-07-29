@@ -28,7 +28,7 @@ namespace lin {
 
 // ── Spec version ─────────────────────────────────────────────────────────────
 
-inline constexpr const char* kSpecVersion = "1.11";
+inline constexpr const char* kSpecVersion = "1.14";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 

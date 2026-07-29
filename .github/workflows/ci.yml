@@ -148,7 +148,17 @@ jobs:
           go-version: 'stable'
 
       - name: Install relay tool
-        run: go install github.com/SoundMatt/RELAY/cmd/relay@latest
+        # Pinned, not @latest: an unpinned install means the spec version
+        # actually being conformance-checked against can silently change
+        # between CI runs with no diff to review (see cpp-LIN#22). v2.0.0 is
+        # RELAY's current tagged release but is not installable via
+        # `go install ...@v2.0.0` — its go.mod doesn't declare the
+        # `/v2` module path suffix Go's semantic import versioning requires
+        # for a v2+ major version, so the install fails outright (filed
+        # upstream as SoundMatt/RELAY#68). v1.14.0 is therefore the current
+        # actually-installable latest; keep this in sync with README.md and
+        # requirements/requirements.json's declared spec version.
+        run: go install github.com/SoundMatt/RELAY/cmd/relay@v1.14.0
 
       - name: RELAY conformance gate
         run: relay conform --strict ./build/cli/cpp-lin-cli
@@ -234,7 +244,7 @@ jobs:
         with:
           repository: SoundMatt/cpp-FuSa
           path: cpp-FuSa
-          ref: v0.15.0
+          ref: v0.17.1
 
       - name: Install tools
         run: sudo apt-get update -qq && sudo apt-get install -y cmake ninja-build zip
@@ -249,7 +259,14 @@ jobs:
 
       - name: cpfusa init
         working-directory: cpp-LIN
-        run: ../cpp-FuSa/build/cpfusa init --name cpp-LIN --standard iso26262 --asil ASIL-B --project-version 0.4.0 --force || true
+        # No --force: .fusa.json/.fusa-reqs.json are checked into the repo
+        # and already populated (hundreds of real REQ-* entries). --force
+        # would silently overwrite them with an empty scaffold right before
+        # the traceability step reads them, making the traceability gate a
+        # permanent no-op (see cpp-LIN#19). Without --force, `init` just
+        # prints "already exists" and exits 0 when the files are present, so
+        # no `|| true` is needed either.
+        run: ../cpp-FuSa/build/cpfusa init --name cpp-LIN --standard iso26262 --asil ASIL-B --project-version 0.4.0
 
       - name: cpfusa check
         working-directory: cpp-LIN
@@ -273,23 +290,7 @@ jobs:
 
       - name: cpfusa hara init
         working-directory: cpp-LIN
-        run: ../cpp-FuSa/build/cpfusa hara init --project cpp-LIN --dir . || true
-
-      - name: cpfusa iso26262 (ASIL-B)
-        working-directory: cpp-LIN
-        run: |
-          ../cpp-FuSa/build/cpfusa iso26262 \
-            --asil ASIL-B \
-            --output iso26262-gap-report.json \
-            --dir . || true
-
-      - name: cpfusa iec61508 (SIL-2)
-        working-directory: cpp-LIN
-        run: |
-          ../cpp-FuSa/build/cpfusa iec61508 \
-            --sil SIL-2 \
-            --output iec61508-gap-report.json \
-            --dir . || true
+        run: ../cpp-FuSa/build/cpfusa hara init --project cpp-LIN --dir .
 
       - name: cpfusa boundary
         working-directory: cpp-LIN
@@ -314,6 +315,66 @@ jobs:
       - name: cpfusa sci
         working-directory: cpp-LIN
         run: ../cpp-FuSa/build/cpfusa sci --dir .
+
+      - name: cpfusa release (SBOM + provenance + artifact manifest)
+        working-directory: cpp-LIN
+        # Was never called even though the evidence-upload step below has
+        # always listed sbom.json/provenance.json/artifact-manifest.json —
+        # they never actually existed at upload time.
+        run: ../cpp-FuSa/build/cpfusa release --dir .
+
+      - name: cpfusa iso26262 (ASIL-B gap gate)
+        working-directory: cpp-LIN
+        # Run after every other evidence-generating step above so the gap
+        # analysis sees the real, complete evidence set (previously this ran
+        # right after `hara init`, before boundary/tara/fmea/safety-case/
+        # sas/sci/release had produced anything, so it under-reported).
+        #
+        # `cpfusa iso26262` exits 1 whenever any objective is in the "gap"
+        # state, which is real behavior, not a bug: with the full evidence
+        # set in place, 11 of the 20 ASIL-B objectives still report "gap"
+        # (6-5.2, 6-6.1, 6-6.2, 6-6.3, 6-7.1, 6-7.2, 6-8.1, 6-9.1, 8-6.1,
+        # 8-6.2, 9-1.1) purely because cpfusa v0.17.1's own
+        # iso26262::detect_status() has no evidence-detection case at all for
+        # those clauses (it falls through to Status::Gap unconditionally,
+        # regardless of what's actually in the repo — e.g. 8-6.2 "Safety
+        # manual" reports gap even though SAFETY_MANUAL.md exists and is
+        # substantial). Filed upstream as SoundMatt/cpp-FuSa#57. Until that's
+        # fixed, blanket `|| true` here would hide real regressions just as
+        # much as it hides this known floor, so instead this gate fails only
+        # if the gap count regresses past that documented floor.
+        run: |
+          ../cpp-FuSa/build/cpfusa iso26262 \
+            --asil ASIL-B \
+            --output iso26262-gap-report.json \
+            --dir . || true
+          GAPS=$(jq '.summary.gaps' iso26262-gap-report.json)
+          echo "ISO 26262 ASIL-B: $(jq -c '.summary' iso26262-gap-report.json)"
+          MAX_GAPS=11
+          if [ "$GAPS" -gt "$MAX_GAPS" ]; then
+            echo "::error::ISO 26262 ASIL-B gap count ($GAPS) exceeds the known ${MAX_GAPS}-gap floor (see step comment / SoundMatt/cpp-FuSa#57) — this is a real regression, not the known tool limitation. Investigate before merging."
+            exit 1
+          fi
+
+      - name: cpfusa iec61508 (SIL-2 gap gate)
+        working-directory: cpp-LIN
+        # Same reasoning as the ISO 26262 step above: 10 of the 18 required
+        # SIL-2 objectives (1-7.1, 1-8.1, 1-8.2, 3-7.2, 3-7.4, 3-7.5, 3-7.6,
+        # 3-7.7, 3-7.8, 2-7.1) have no detect_status() case in cpfusa v0.17.1
+        # and can never leave "gap" via this tool version regardless of real
+        # project evidence. Same upstream issue (SoundMatt/cpp-FuSa#57).
+        run: |
+          ../cpp-FuSa/build/cpfusa iec61508 \
+            --sil SIL-2 \
+            --output iec61508-gap-report.json \
+            --dir . || true
+          GAPS=$(jq '.summary.gaps' iec61508-gap-report.json)
+          echo "IEC 61508 SIL-2: $(jq -c '.summary' iec61508-gap-report.json)"
+          MAX_GAPS=10
+          if [ "$GAPS" -gt "$MAX_GAPS" ]; then
+            echo "::error::IEC 61508 SIL-2 gap count ($GAPS) exceeds the known ${MAX_GAPS}-gap floor (see step comment / SoundMatt/cpp-FuSa#57) — this is a real regression, not the known tool limitation. Investigate before merging."
+            exit 1
+          fi
 
       - name: cpfusa badge
         working-directory: cpp-LIN
@@ -435,7 +496,7 @@ jobs:
         with:
           repository: SoundMatt/cpp-FuSa
           path: cpp-FuSa
-          ref: v0.15.0
+          ref: v0.17.1
 
       - name: Install tools
         run: sudo apt-get update -qq && sudo apt-get install -y cmake ninja-build

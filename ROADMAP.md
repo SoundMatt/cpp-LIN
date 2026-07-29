@@ -5,7 +5,7 @@
 - [x] Virtual bus with Classic and Enhanced checksum support
 - [x] Protected Identifier (PID) computation and verification
 - [x] LDF parser (nodes, signals, frames, schedule tables, signal decode)
-- [x] Master node with schedule table runner (`std::stop_token`)
+- [x] Master node with schedule table runner (`std::atomic<bool>&`)
 - [x] Slave node with per-ID response registration
 - [x] E2E safety: Protector and Receiver (CRC-16/CCITT-FALSE, 10-byte header)
 - [x] RELAY v1.10 adapter (`relay::INode`)
