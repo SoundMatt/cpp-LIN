@@ -60,7 +60,11 @@ DB::decode(uint8_t id, const std::vector<uint8_t>& data) const {
 
         // LSB-first (Intel) bit extraction — REQ-LDF-009
         uint64_t val = 0;
-        int bit_width = sit->second.bit_width;
+        // Clamp defensively even though parse_signals() already rejects
+        // bit_width outside [1, 64] — decode() must never trust that every
+        // DB it is handed came from this parser's own validation path.
+        // Shifting a uint64_t by >= 64 bits is undefined behavior in C++.
+        int bit_width = std::min(sit->second.bit_width, 64);
         for (int i = 0; i < bit_width; ++i) {
             int byte_idx = (ref.bit_offset + i) / 8;
             int bit_idx  = (ref.bit_offset + i) % 8;
@@ -192,7 +196,15 @@ struct Parser {
 
             Signal sig;
             sig.name = name;
-            try { sig.bit_width = static_cast<int>(parse_int(parts[0])); } catch (...) {}
+            // Reject bit widths outside [1, 64] — REQ-LDF-009's decode() loop
+            // shifts a uint64_t by the bit width, which is undefined behavior
+            // for values >= 64. An LDF is external, semi-trusted input, so a
+            // malformed/crafted file must not be able to reach that UB via a
+            // signal declaration.
+            try {
+                int64_t parsed = parse_int(parts[0]);
+                if (parsed >= 1 && parsed <= 64) sig.bit_width = static_cast<int>(parsed);
+            } catch (...) {}
             try { sig.init_value = parse_uint(parts[1]); } catch (...) {}
             sig.publisher = trim(parts[2]);
             for (std::size_t i = 3; i < parts.size(); ++i) {
