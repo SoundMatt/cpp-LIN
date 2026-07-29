@@ -101,16 +101,31 @@ process_frame(hw_frame);
 
 ### 4.2 E2E Protection for Safety-Critical Payloads (SG-05)
 
-Use `lin::safety::Protector` and `Receiver` for all ASIL-B data paths:
+Use `lin::safety::Protector` and `Receiver` for all ASIL-B data paths.
+
+`Protector::protect()` prepends a fixed `lin::safety::kHeaderSize` (3-byte)
+header to the payload it is given. Because a LIN frame's data field is at
+most `lin::kLINMaxDataLen` (8) bytes, **the raw payload passed to `protect()`
+must be at most `kLINMaxDataLen - kHeaderSize` (5) bytes** for the protected
+output to fit in a single frame — `bus->publish()` rejects (returns a
+non-empty `std::error_code`) any payload that doesn't fit, so a
+budget violation is caught at the call site rather than silently corrupting
+or truncating the frame:
 
 ```cpp
 // Sender side (e.g., sensor ECU)
 lin::safety::Config cfg{.data_id = 0x0042, .source_id = 0x0001};
 lin::safety::Protector protector{cfg};
 
-auto raw_payload   = read_sensor_value();
-auto safe_payload  = protector.protect(raw_payload);
-bus->publish(FRAME_ID_SENSOR, safe_payload);
+auto raw_payload = read_sensor_value();  // at most kLINMaxDataLen - kHeaderSize (5) bytes
+auto safe_payload = protector.protect(raw_payload);
+if (auto err = bus->publish(FRAME_ID_SENSOR, safe_payload)) {
+    // raw_payload was too large for a single LIN frame once protected —
+    // programming error, not a runtime/bus condition. Fix the payload
+    // budget rather than retrying.
+    log_fault(err);
+    return;
+}
 
 // Receiver side (e.g., actuator ECU)
 lin::safety::Receiver receiver{cfg};
@@ -125,6 +140,9 @@ try {
 ```
 
 **NEVER** ignore `E2EError` exceptions — they indicate data corruption or replay.
+
+**NEVER** ignore `bus->publish()`'s returned error for an E2E-protected
+payload — an oversized payload is rejected rather than transmitted.
 
 ### 4.3 Error Handling for ErrNoResponse (SG-01)
 

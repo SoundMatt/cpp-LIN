@@ -105,6 +105,21 @@ TEST_CASE("publish rejects ID > 0x3F", "[virtual][REQ-VIRT-004]") {
     bus->close();
 }
 
+// Regression test for cpp-LIN#17: no publish path validated data.size()
+// against kLINMaxDataLen, so an oversized payload (e.g. the output of
+// safety::Protector::protect() with a large payload) was silently accepted
+// and stored as a "valid" response despite being unsendable on a real bus.
+TEST_CASE("publish rejects data longer than kLINMaxDataLen", "[virtual][REQ-VIRT-004][regression]") {
+    auto bus = Bus::create();
+    std::vector<uint8_t> oversized(kLINMaxDataLen + 1, 0xAA);
+    auto err = bus->publish(0x10, oversized);
+    CHECK(err);
+    // Confirm it was not stored: send_header must report no response.
+    auto [f, herr] = bus->send_header(0x10);
+    CHECK(herr);
+    bus->close();
+}
+
 TEST_CASE("publish(id, {}) removes registration", "[virtual][REQ-VIRT-003]") {
     auto bus = Bus::create();
     REQUIRE_FALSE(bus->publish(0x10, {0xAA}));

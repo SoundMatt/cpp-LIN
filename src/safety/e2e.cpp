@@ -29,47 +29,40 @@ uint16_t crc16(const uint8_t* data, std::size_t len) noexcept {
     return crc;
 }
 
-// Builds the 10-byte header with CRC filled in.
+// Builds the 3-byte header ([0]=SequenceCounter, [1:2]=CRC) with CRC filled
+// in. DataID/SourceID are never written to the header — they exist only as
+// CRC input, so a mismatched Config on either side surfaces as a CRC error
+// rather than being silently accepted or spending header bytes on identity
+// fields that a LIN frame's 8-byte budget cannot afford (see cpp-LIN#17).
 static std::vector<uint8_t> build_header(uint16_t data_id, uint16_t source_id,
-                                          uint32_t seq,
+                                          uint8_t seq,
                                           const std::vector<uint8_t>& payload) {
     std::vector<uint8_t> hdr(kHeaderSize, 0);
-    // bytes 0-1: DataID little-endian
-    hdr[0] = static_cast<uint8_t>(data_id);
-    hdr[1] = static_cast<uint8_t>(data_id >> 8);
-    // bytes 2-3: SourceID little-endian
-    hdr[2] = static_cast<uint8_t>(source_id);
-    hdr[3] = static_cast<uint8_t>(source_id >> 8);
-    // bytes 4-7: SequenceCounter little-endian
-    hdr[4] = static_cast<uint8_t>(seq);
-    hdr[5] = static_cast<uint8_t>(seq >> 8);
-    hdr[6] = static_cast<uint8_t>(seq >> 16);
-    hdr[7] = static_cast<uint8_t>(seq >> 24);
-    // hdr[8:9] = 0 during CRC computation
+    hdr[0] = seq;
+    // hdr[1:2] = 0 during CRC computation
 
-    // CRC over header bytes 0–7 (CRC slot zeroed) and payload
     constexpr uint16_t poly = 0x1021;
     uint16_t crc_val = 0xFFFF;
-    for (int i = 0; i < 8; ++i) {
-        crc_val ^= static_cast<uint16_t>(hdr[i]) << 8;
-        for (int j = 0; j < 8; ++j) {
-            crc_val = (crc_val & 0x8000)
-                ? static_cast<uint16_t>((crc_val << 1) ^ poly)
-                : static_cast<uint16_t>(crc_val << 1);
-        }
-    }
-    for (auto b : payload) {
+    auto crc_byte = [&crc_val](uint8_t b) {
         crc_val ^= static_cast<uint16_t>(b) << 8;
         for (int j = 0; j < 8; ++j) {
             crc_val = (crc_val & 0x8000)
                 ? static_cast<uint16_t>((crc_val << 1) ^ poly)
                 : static_cast<uint16_t>(crc_val << 1);
         }
-    }
+    };
 
-    // bytes 8-9: CRC little-endian
-    hdr[8] = static_cast<uint8_t>(crc_val);
-    hdr[9] = static_cast<uint8_t>(crc_val >> 8);
+    // CRC input: DataID (2B) + SourceID (2B) + SequenceCounter (1B) + payload.
+    crc_byte(static_cast<uint8_t>(data_id));
+    crc_byte(static_cast<uint8_t>(data_id >> 8));
+    crc_byte(static_cast<uint8_t>(source_id));
+    crc_byte(static_cast<uint8_t>(source_id >> 8));
+    crc_byte(seq);
+    for (auto b : payload) crc_byte(b);
+
+    // bytes 1-2: CRC little-endian
+    hdr[1] = static_cast<uint8_t>(crc_val);
+    hdr[2] = static_cast<uint8_t>(crc_val >> 8);
     return hdr;
 }
 
@@ -78,7 +71,9 @@ static std::vector<uint8_t> build_header(uint16_t data_id, uint16_t source_id,
 // fusa:req REQ-SAFETY-001 REQ-SAFETY-002 REQ-SAFETY-003 REQ-SAFETY-004
 // fusa:req REQ-SAFETY-005 REQ-SAFETY-006 REQ-SAFETY-012 REQ-SAFETY-014
 std::vector<uint8_t> Protector::protect(const std::vector<uint8_t>& payload) {
-    uint32_t seq = seq_++;
+    // On-wire SequenceCounter is a single byte (wraps mod 256) — see
+    // e2e.hpp's wire-format note for why the header must stay this small.
+    uint8_t seq = static_cast<uint8_t>(seq_++);
     auto hdr = build_header(cfg_.data_id, cfg_.source_id, seq, payload);
     std::vector<uint8_t> out;
     out.reserve(kHeaderSize + payload.size());
@@ -97,25 +92,23 @@ std::vector<uint8_t> Receiver::unwrap(const std::vector<uint8_t>& data) {
                        "need " + std::to_string(kHeaderSize) +
                        " bytes, got " + std::to_string(data.size()));
 
-    uint32_t seq = static_cast<uint32_t>(data[4])
-                 | static_cast<uint32_t>(data[5]) << 8
-                 | static_cast<uint32_t>(data[6]) << 16
-                 | static_cast<uint32_t>(data[7]) << 24;
+    uint8_t seq = data[0];
 
-    uint16_t received_crc = static_cast<uint16_t>(data[8])
-                          | static_cast<uint16_t>(data[9]) << 8;
+    uint16_t received_crc = static_cast<uint16_t>(data[1])
+                          | static_cast<uint16_t>(data[2]) << 8;
 
     std::vector<uint8_t> payload(data.begin() + kHeaderSize, data.end());
     auto expected_hdr = build_header(cfg_.data_id, cfg_.source_id, seq, payload);
-    uint16_t expected_crc = static_cast<uint16_t>(expected_hdr[8])
-                          | static_cast<uint16_t>(expected_hdr[9]) << 8;
+    uint16_t expected_crc = static_cast<uint16_t>(expected_hdr[1])
+                          | static_cast<uint16_t>(expected_hdr[2]) << 8;
 
     if (received_crc != expected_crc)
         throw E2EError(E2EErrorKind::CRCMismatch, seq, "CRC mismatch");
 
     std::lock_guard<std::mutex> lk(mu_);
-    if (!first_ && seq != last_seq_ + 1) {
-        uint32_t expected_seq = last_seq_ + 1;
+    // Sequence comparison wraps mod 256 to match the on-wire counter width.
+    if (!first_ && seq != static_cast<uint8_t>(last_seq_ + 1)) {
+        uint8_t expected_seq = static_cast<uint8_t>(last_seq_ + 1);
         last_seq_ = seq;
         throw E2EError(E2EErrorKind::SequenceGap, seq,
                        "expected " + std::to_string(expected_seq) +
