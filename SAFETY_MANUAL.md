@@ -101,21 +101,49 @@ process_frame(hw_frame);
 
 ### 4.2 E2E Protection for Safety-Critical Payloads (SG-05)
 
-Use `lin::safety::Protector` and `Receiver` for all ASIL-B data paths:
+**`lin::safety::Protector`/`Receiver` cannot protect a payload published as a
+single raw LIN frame.** `Protector::protect()` always prepends a fixed
+`kHeaderSize` (10-byte) header to the payload (`include/lin/safety/e2e.hpp`),
+so its output is always at least 10 bytes — but a LIN frame's data field is
+capped at `kLINMaxDataLen` (8 bytes). This is true for *any* input payload,
+including a zero-byte one: there is no payload size for which
+`protect()`'s output fits in a single LIN frame. `Bus::do_publish()` and
+`slave::Node::set_response()` both reject any non-empty payload longer than
+`kLINMaxDataLen` with `ErrInvalidFrame` (and the RELAY adapter's `send()`
+surfaces the equivalent `ErrPayloadTooLarge`) specifically so this mistake
+fails loudly instead of silently truncating or corrupting the frame on the
+wire — **do not** work around that rejection (e.g. by truncating
+`protect()`'s output yourself); a truncated E2E-protected payload is not a
+valid protected payload.
+
+As of this release, `lin::safety::Protector`/`Receiver` are **not usable
+for direct single-frame LIN publish** and must not be wired into
+`Bus::do_publish()` / `slave::Node::set_response()` this way. The module is
+retained for callers who protect a payload that travels over a transport
+capable of carrying more than 8 bytes per logical message — e.g. a future
+multi-frame LIN diagnostic transport (see `ROADMAP.md`'s planned
+`UDS (ISO 14229) over LIN TP adapter`, not yet implemented) — where the
+protected payload is fragmented across several physical LIN frames by that
+transport layer, not published directly. Round-trip `protect()`/`unwrap()`
+usage that never goes through `IBus::publish()` (e.g. protecting a payload
+before handing it to your own transport) remains safe and thread-safe:
 
 ```cpp
-// Sender side (e.g., sensor ECU)
 lin::safety::Config cfg{.data_id = 0x0042, .source_id = 0x0001};
 lin::safety::Protector protector{cfg};
+lin::safety::Receiver  receiver{cfg};
 
-auto raw_payload   = read_sensor_value();
-auto safe_payload  = protector.protect(raw_payload);
-bus->publish(FRAME_ID_SENSOR, safe_payload);
+auto raw_payload  = read_sensor_value();
+auto safe_payload = protector.protect(raw_payload);   // >= 10 bytes — do NOT
+                                                        // pass this to
+                                                        // Bus::publish()/
+                                                        // set_response()
+                                                        // directly
 
-// Receiver side (e.g., actuator ECU)
-lin::safety::Receiver receiver{cfg};
+// ... safe_payload travels over your own multi-frame-capable transport ...
+
 try {
-    auto verified = receiver.unwrap(frame.data);
+    auto verified = receiver.unwrap(safe_payload);
     actuate(verified);
 } catch (const lin::safety::E2EError& e) {
     // mandatory safe state on E2E failure
@@ -245,7 +273,7 @@ must ensure:
 4. The `id` field in `relay::Message` carries the decimal string representation
    of the LIN frame ID (e.g., `"16"` for frame 0x10).
 
-See `RELAY Spec v1.11 §8.3` for the complete LIN-over-RELAY envelope specification.
+See `RELAY Spec v1.14 §8.3` for the complete LIN-over-RELAY envelope specification.
 
 ---
 
@@ -290,4 +318,4 @@ Reproducing from `SEOOC.md` for convenience:
 - `sas.md` — Software Architecture Specification
 - ISO 26262:2018 Part 6 §7 — Software integration and verification
 - ISO 26262:2018 Part 10 §9 — Safety element out of context
-- RELAY Specification v1.11 §8.3 — LIN bus binding
+- RELAY Specification v1.14 §8.3 — LIN bus binding

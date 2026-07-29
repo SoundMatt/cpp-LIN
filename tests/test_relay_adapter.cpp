@@ -63,6 +63,22 @@ TEST_CASE("adapt: send rejects non-numeric ID string", "[adapter][REQ-ADAPT-003]
     (void)bus->close();
 }
 
+TEST_CASE("adapt: send rejects oversized payload with ErrPayloadTooLarge", "[adapter][REQ-ADAPT-002][REQ-ADAPT-003]") {
+    // relay::INode::send() (§10.1) may only return ErrClosed, ErrNotConnected,
+    // ErrTimeout, or ErrPayloadTooLarge — an oversized payload must surface
+    // as ErrPayloadTooLarge specifically, not the lin::Errc::invalid_frame
+    // that IBus::publish() returns for the same condition (cpp-LIN#17).
+    auto bus = Bus::create();
+    auto node = adapt(bus);
+
+    relay::Message msg;
+    msg.id = "16";
+    msg.payload = std::vector<uint8_t>(kLINMaxDataLen + 1, 0xAA);
+    auto err = node->send(msg);
+    CHECK(err == relay::ErrPayloadTooLarge());
+    (void)bus->close();
+}
+
 TEST_CASE("adapt: subscribe delivers frames as relay::Message", "[adapter][REQ-ADAPT-004]") {
     auto bus = Bus::create();
     auto node = adapt(bus);
