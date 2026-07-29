@@ -7,7 +7,9 @@
   },
   "sourceDirs": [
     "src",
-    "include"
+    "include",
+    "tests",
+    "cli"
   ],
   "standard": "iso26262",
   "strict": false

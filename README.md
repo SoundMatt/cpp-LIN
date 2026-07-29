@@ -1,11 +1,19 @@
 # cpp-LIN
 
-C++ LIN bus library — RELAY-conformant, ISO 26262 ASIL-B.
+C++ LIN bus library — RELAY-conformant, ISO 26262 ASIL-B target (SEooC).
 
 [![CI](https://github.com/SoundMatt/cpp-LIN/actions/workflows/ci.yml/badge.svg)](https://github.com/SoundMatt/cpp-LIN/actions/workflows/ci.yml)
 [![RELAY Conformant](https://img.shields.io/badge/RELAY-v1.11%20conformant-blue)](https://github.com/SoundMatt/RELAY)
-[![ASIL-B](https://img.shields.io/badge/ISO%2026262-ASIL--B-orange)](SAFETY_PLAN.md)
+[![ASIL-B target](https://img.shields.io/badge/ISO%2026262-ASIL--B%20target-yellow)](SAFETY_PLAN.md)
 [![License: MPL 2.0](https://img.shields.io/badge/License-MPL%202.0-brightgreen.svg)](LICENSE)
+
+cpp-LIN is a Safety Element out of Context (SEooC, ISO 26262-10 §9) targeting
+ASIL-B, not a completed third-party certification. CI runs `cpfusa iso26262`/
+`cpfusa iec61508` gap analyses on every build and gates on non-regression
+against a documented baseline (`.github/workflows/ci.yml`'s `fusa-asil-b`
+job); see `iso26262-gap-report.json`/`iec61508-gap-report.json` in that job's
+uploaded evidence artifacts for the current, honest gap count rather than
+treating the badge above as a completeness claim.
 
 ## Overview
 

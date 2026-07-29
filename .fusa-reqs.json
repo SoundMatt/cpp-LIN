@@ -610,6 +610,54 @@
       "tags": ["slave", "update"]
     },
     {
+      "id": "REQ-CLI-001",
+      "title": "version command reports tool/protocol/spec_version fields",
+      "description": "cmd_version's json and text renderings shall include tool, protocol, version, spec_version, language, and runtime fields per RELAY spec §12.1.",
+      "asil": "ASIL-B",
+      "rationale": "Integrators must be able to programmatically confirm which cpp-lin build and RELAY spec version a binary implements.",
+      "tags": ["cli"]
+    },
+    {
+      "id": "REQ-CLI-002",
+      "title": "capabilities command reports transports/features/interfaces",
+      "description": "capabilities_json() shall report kind, tool, protocol, version, spec_version, commands, transports, features, interfaces, optional_interfaces, and adapt per RELAY spec §12.2.",
+      "asil": "ASIL-B",
+      "rationale": "Downstream tooling (e.g. relay conform) discovers a binary's supported feature set from this document.",
+      "tags": ["cli"]
+    },
+    {
+      "id": "REQ-CLI-003",
+      "title": "status command reports health/connection fields",
+      "description": "cmd_status's json and text renderings shall include protocol, tool, version, healthy, connected, endpoint, and details fields per RELAY spec §12.3.",
+      "asil": "ASIL-B",
+      "rationale": "Operators and orchestration tooling need a machine-readable liveness/health signal.",
+      "tags": ["cli"]
+    },
+    {
+      "id": "REQ-CLI-004",
+      "title": "parse_frame_json parses a LIN frame from JSON",
+      "description": "parse_frame_json shall extract id, data, checksum_type, and checksum from a JSON object and throw on a missing or invalid id field.",
+      "asil": "ASIL-B",
+      "rationale": "The CLI's frame-publish path depends on correctly reconstructing a lin::Frame from user-supplied JSON.",
+      "tags": ["cli", "json"]
+    },
+    {
+      "id": "REQ-CLI-005",
+      "title": "message_to_json serialises a RELAY Message to JSON",
+      "description": "message_to_json shall serialise protocol, version, id, base64 payload, timestamp, and (when present) seq/meta fields.",
+      "asil": "ASIL-B",
+      "rationale": "relay conform and downstream consumers depend on a spec-conformant JSON rendering of RELAY messages.",
+      "tags": ["cli", "json"]
+    },
+    {
+      "id": "REQ-CLI-006",
+      "title": "convert command rejects RELAY error-vector inputs per spec",
+      "description": "cmd_convert (and the underlying conversion path) shall reject inputs matching RELAY's published error vectors (e.g. ID overflow, wrong checksum) rather than silently accepting them.",
+      "asil": "ASIL-B",
+      "rationale": "RELAY spec §20 continuous conformance requires a conformant implementation to exercise the reject path, not only the happy path.",
+      "tags": ["cli", "conformance"]
+    },
+    {
       "id": "REQ-SAFETY-001",
       "title": "DataID embedded in header bytes 0-1",
       "description": "Protect shall write Config.DataID as a little-endian uint16 into bytes 0-1 of the protected payload.",

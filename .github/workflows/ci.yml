@@ -234,7 +234,7 @@ jobs:
         with:
           repository: SoundMatt/cpp-FuSa
           path: cpp-FuSa
-          ref: v0.15.0
+          ref: v0.17.1
 
       - name: Install tools
         run: sudo apt-get update -qq && sudo apt-get install -y cmake ninja-build zip
@@ -247,9 +247,13 @@ jobs:
             -G Ninja
           cmake --build cpp-FuSa/build --parallel
 
-      - name: cpfusa init
-        working-directory: cpp-LIN
-        run: ../cpp-FuSa/build/cpfusa init --name cpp-LIN --standard iso26262 --asil ASIL-B --project-version 0.4.0 --force || true
+      # No `cpfusa init` step: .fusa.json and .fusa-reqs.json are real,
+      # populated, checked-in files (the latter is 50+ KB of hand-maintained
+      # REQ-* entries). `init --force` unconditionally overwrote both with
+      # an empty scaffold before the traceability step ever ran, so CI's
+      # requirements coverage was always computed against zero requirements
+      # regardless of the repo's real state (cpp-LIN#19). `init` is only
+      # needed for first-time local setup, where these files don't exist yet.
 
       - name: cpfusa check
         working-directory: cpp-LIN
@@ -275,22 +279,12 @@ jobs:
         working-directory: cpp-LIN
         run: ../cpp-FuSa/build/cpfusa hara init --project cpp-LIN --dir . || true
 
-      - name: cpfusa iso26262 (ASIL-B)
-        working-directory: cpp-LIN
-        run: |
-          ../cpp-FuSa/build/cpfusa iso26262 \
-            --asil ASIL-B \
-            --output iso26262-gap-report.json \
-            --dir . || true
-
-      - name: cpfusa iec61508 (SIL-2)
-        working-directory: cpp-LIN
-        run: |
-          ../cpp-FuSa/build/cpfusa iec61508 \
-            --sil SIL-2 \
-            --output iec61508-gap-report.json \
-            --dir . || true
-
+      # boundary/tara/fmea/safety-case/sas/sci run BEFORE the iso26262/
+      # iec61508 gap analyses below: several ISO 26262/IEC 61508 objectives
+      # (e.g. §9-2.1 Safety case, §10.4 SCI) are graded by cpfusa on whether
+      # safety-case.json/sci.json etc. already exist on disk. Gap-checking
+      # before generating them undercounted objectives this repo actually
+      # addresses.
       - name: cpfusa boundary
         working-directory: cpp-LIN
         run: ../cpp-FuSa/build/cpfusa boundary --dir .
@@ -314,6 +308,47 @@ jobs:
       - name: cpfusa sci
         working-directory: cpp-LIN
         run: ../cpp-FuSa/build/cpfusa sci --dir .
+
+      # These gates enforce a documented, currently-achieved baseline gap
+      # count rather than requiring zero gaps outright: cpfusa v0.17.1 has
+      # no evidence-detection logic at all for several objectives (e.g. §6.1
+      # Software architectural design, §8-6.2 Safety manual — see cpp-FuSa
+      # src/iso26262/iso26262.cpp's detect_status(), which falls through to
+      # Status::Gap unconditionally for those IDs regardless of what evidence
+      # exists), so a "0 gaps" target is not achievable with this tool
+      # version no matter how complete this repo's safety documentation is.
+      # The gate below still turns this into a real, enforced check: it
+      # fails the build if the gap count *regresses* past the current
+      # baseline, rather than being structurally unable to fail at all
+      # (cpp-LIN#20). See SAFETY_PLAN.md for this repo's ASIL-B *target*
+      # framing (SEooC, not a completed-certification claim).
+      - name: cpfusa iso26262 (ASIL-B)
+        working-directory: cpp-LIN
+        run: |
+          ../cpp-FuSa/build/cpfusa iso26262 \
+            --asil ASIL-B \
+            --output iso26262-gap-report.json \
+            --dir .
+          GAPS=$(jq '.summary.gaps' iso26262-gap-report.json)
+          echo "ISO 26262 gaps: ${GAPS} (baseline: 13)"
+          if [ "${GAPS}" -gt 13 ]; then
+            echo "::error::ISO 26262 gap count ${GAPS} exceeds baseline of 13 — see iso26262-gap-report.json"
+            exit 1
+          fi
+
+      - name: cpfusa iec61508 (SIL-2)
+        working-directory: cpp-LIN
+        run: |
+          ../cpp-FuSa/build/cpfusa iec61508 \
+            --sil SIL-2 \
+            --output iec61508-gap-report.json \
+            --dir .
+          GAPS=$(jq '.summary.gaps' iec61508-gap-report.json)
+          echo "IEC 61508 gaps: ${GAPS} (baseline: 11)"
+          if [ "${GAPS}" -gt 11 ]; then
+            echo "::error::IEC 61508 gap count ${GAPS} exceeds baseline of 11 — see iec61508-gap-report.json"
+            exit 1
+          fi
 
       - name: cpfusa badge
         working-directory: cpp-LIN
@@ -435,7 +470,7 @@ jobs:
         with:
           repository: SoundMatt/cpp-FuSa
           path: cpp-FuSa
-          ref: v0.15.0
+          ref: v0.17.1
 
       - name: Install tools
         run: sudo apt-get update -qq && sudo apt-get install -y cmake ninja-build
@@ -448,9 +483,8 @@ jobs:
             -G Ninja
           cmake --build cpp-FuSa/build --parallel
 
-      - name: cpfusa init
-        working-directory: cpp-LIN
-        run: ../cpp-FuSa/build/cpfusa init --name cpp-LIN --standard iso26262 --asil ASIL-B --project-version 0.4.0 --force || true
+      # No `cpfusa init` step here either — see the fusa-asil-b job's note
+      # (cpp-LIN#19): .fusa.json/.fusa-reqs.json are already checked in.
 
       - name: Generate SARIF report
         working-directory: cpp-LIN
