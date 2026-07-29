@@ -190,3 +190,73 @@ TEST_CASE("Frames() returns defensive copy", "[ldf][REQ-LDF-015]") {
     frames.clear();
     CHECK(db->frame(0x10) != nullptr);
 }
+
+TEST_CASE("parse rejects signal bit_width > 64", "[ldf][REQ-LDF-007]") {
+    // BigSignal's declared bit_width (128) exceeds what any uint64_t-based
+    // decode() can represent (and exceeds 8*kLINMaxDataLen bits anyway) —
+    // parse_signals() must not store it, or a later decode() call against a
+    // >8-byte buffer would shift a uint64_t by >=64 bits (UB).
+    static const char* kLDF = R"(
+Signals {
+  BigSignal : 128, 0, MotorControl, BCM ;
+  MotorSpeed : 8, 0, MotorControl, BCM ;
+}
+
+Frames {
+  BigFrame : 0x30, MotorControl, 10 {
+    BigSignal, 0 ;
+  }
+}
+)";
+    std::istringstream ss(kLDF);
+    auto db = parse(ss);
+    REQUIRE(db != nullptr);
+    CHECK(db->signal("BigSignal") == nullptr);
+    CHECK(db->signal("MotorSpeed") != nullptr);
+
+    // The frame itself still parses; decoding it against a >8-byte buffer
+    // (the precondition needed to actually reach the unclamped shift) must
+    // not crash, and the unresolvable signal is simply absent from the
+    // result rather than UB.
+    std::vector<uint8_t> data(10, 0xFF);
+    std::unordered_map<std::string, uint64_t> result;
+    REQUIRE_NOTHROW(result = db->decode(0x30, data));
+    CHECK(result.count("BigSignal") == 0);
+}
+
+TEST_CASE("parse rejects signal bit_width == 0", "[ldf][REQ-LDF-007]") {
+    static const char* kLDF = R"(
+Signals {
+  ZeroWidth : 0, 0, MotorControl, BCM ;
+}
+)";
+    std::istringstream ss(kLDF);
+    auto db = parse(ss);
+    REQUIRE(db != nullptr);
+    CHECK(db->signal("ZeroWidth") == nullptr);
+}
+
+TEST_CASE("Decode clamps an out-of-range bit_width instead of UB", "[ldf][REQ-LDF-009]") {
+    // Bypasses the text parser entirely (DB's storage members are public,
+    // populated by parse() but constructible directly by any caller) to
+    // exercise decode()'s own defense-in-depth clamp, independent of the
+    // parse-time rejection covered above.
+    DB db;
+    Signal sig;
+    sig.name      = "Huge";
+    sig.bit_width = 200;
+    db.signals_["Huge"] = sig;
+
+    LDFFrame fr;
+    fr.name = "HugeFrame";
+    fr.id   = 0x31;
+    fr.signals.push_back(SignalRef{"Huge", 0});
+    db.frames_[0x31] = fr;
+
+    std::vector<uint8_t> data(20, 0xFF);  // > 8 bytes: reaches the clamp path
+    std::unordered_map<std::string, uint64_t> result;
+    REQUIRE_NOTHROW(result = db.decode(0x31, data));
+    REQUIRE(result.count("Huge") == 1);
+    // bit_width clamped to 64; with all-0xFF input every extracted bit is 1.
+    CHECK(result.at("Huge") == 0xFFFFFFFFFFFFFFFFULL);
+}
