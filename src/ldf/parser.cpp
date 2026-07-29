@@ -60,7 +60,13 @@ DB::decode(uint8_t id, const std::vector<uint8_t>& data) const {
 
         // LSB-first (Intel) bit extraction — REQ-LDF-009
         uint64_t val = 0;
-        int bit_width = sit->second.bit_width;
+        // Defense-in-depth clamp: parse_signals() already rejects
+        // out-of-range bit_width at parse time, but decode() must not rely
+        // solely on that — a Signal can also be constructed directly by
+        // callers who bypass the LDF text parser. `1 << i` for i >= 64 is
+        // undefined behavior (aborts under UBSan); clamp the loop bound
+        // itself rather than trusting the stored value.
+        int bit_width = std::clamp(sit->second.bit_width, 0, 64);
         for (int i = 0; i < bit_width; ++i) {
             int byte_idx = (ref.bit_offset + i) / 8;
             int bit_idx  = (ref.bit_offset + i) % 8;
@@ -193,6 +199,13 @@ struct Parser {
             Signal sig;
             sig.name = name;
             try { sig.bit_width = static_cast<int>(parse_int(parts[0])); } catch (...) {}
+            // A bit_width outside [1, 64] cannot be decoded (decode()'s bit
+            // extraction loop shifts a uint64_t by `i` bits) and LIN frames
+            // are at most kLINMaxDataLen (8) bytes = 64 bits wide anyway, so
+            // treat it the same as any other malformed signal line: skip it
+            // rather than storing a Signal that would later cause undefined
+            // behavior (shift-by->=64) in decode(). fusa:req REQ-LDF-008
+            if (sig.bit_width < 1 || sig.bit_width > 64) continue;
             try { sig.init_value = parse_uint(parts[1]); } catch (...) {}
             sig.publisher = trim(parts[2]);
             for (std::size_t i = 3; i < parts.size(); ++i) {
