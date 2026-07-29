@@ -14,6 +14,11 @@ jobs:
     name: Build release binaries (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
+      # So a failure on one OS doesn't cancel the other two in-flight
+      # matrix legs (GH's default fail-fast:true did exactly that every
+      # time the macOS leg failed — see cpp-LIN#13 — hiding whether
+      # ubuntu/windows would themselves have passed).
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-22.04
@@ -38,10 +43,20 @@ jobs:
         run: |
           cmake -B build \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_CXX_STANDARD=17
+            -DCMAKE_CXX_STANDARD=17 \
+            -G Ninja
 
-      - name: Build CLI
-        run: cmake --build build --parallel --target cpp-lin-cli --config Release
+      - name: Build
+        # Build everything (lib + CLI + tests), matching ci.yml's
+        # build-and-test job. The previous `--target cpp-lin-cli` here built
+        # only the CLI binary and never the cpplin_tests target at all, so
+        # the "Run tests" step below always hit ctest's `_NOT_BUILT`
+        # sentinel — on every OS, not just macOS. Combined with the missing
+        # `-G Ninja` (which left macOS on its multi-config Xcode default,
+        # a second independent reason `ctest` couldn't find a Debug/Release
+        # binary it recognized), this is why the macOS release job has
+        # failed on every tagged release (cpp-LIN#13).
+        run: cmake --build build --parallel
 
       - name: Run tests
         run: ctest --test-dir build --output-on-failure -j1
@@ -55,7 +70,9 @@ jobs:
       - name: Stage artifact (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: Copy-Item build\cli\Release\cpp-lin-cli.exe ${{ matrix.artifact }}.exe
+        # -G Ninja is a single-config generator: no per-config (Release/)
+        # output subdirectory, unlike the Visual Studio default generator.
+        run: Copy-Item build\cli\cpp-lin-cli.exe ${{ matrix.artifact }}.exe
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
