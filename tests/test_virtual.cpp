@@ -105,6 +105,24 @@ TEST_CASE("publish rejects ID > 0x3F", "[virtual][REQ-VIRT-004]") {
     bus->close();
 }
 
+TEST_CASE("publish rejects payload longer than kLINMaxDataLen", "[virtual][REQ-VIRT-004]") {
+    auto bus = Bus::create();
+    std::vector<uint8_t> oversized(kLINMaxDataLen + 1, 0xAA);
+    auto err = bus->publish(0x10, oversized);
+    CHECK(err);  // must reject, not silently accept
+    // and must not have registered a (truncated or otherwise) response
+    auto [f, herr] = bus->send_header(0x10);
+    CHECK(herr);  // ErrNoResponse: nothing was ever published for 0x10
+    bus->close();
+}
+
+TEST_CASE("publish accepts payload exactly kLINMaxDataLen", "[virtual][REQ-VIRT-004]") {
+    auto bus = Bus::create();
+    std::vector<uint8_t> maxsize(kLINMaxDataLen, 0xAA);
+    CHECK_FALSE(bus->publish(0x10, maxsize));
+    bus->close();
+}
+
 TEST_CASE("publish(id, {}) removes registration", "[virtual][REQ-VIRT-003]") {
     auto bus = Bus::create();
     REQUIRE_FALSE(bus->publish(0x10, {0xAA}));

@@ -36,6 +36,18 @@ std::error_code Bus::do_publish(uint8_t id, std::vector<uint8_t> data, ChecksumT
         return lin::make_error_code(lin::Errc::invalid_frame);
     }
 
+    // An empty payload is a legitimate "unregister this ID's response"
+    // signal (handled below), not a length violation — only a non-empty,
+    // over-length payload is rejected. Without this, callers following
+    // SAFETY_MANUAL.md's E2E-protected publish pattern (whose
+    // safety::Protector::protect() output is always >= kHeaderSize (10)
+    // bytes, already exceeding kLINMaxDataLen (8)) would have an oversized
+    // frame silently accepted here instead of rejected (cpp-LIN#17).
+    if (!data.empty() && data.size() > kLINMaxDataLen) {
+        error_count_.fetch_add(1);
+        return lin::make_error_code(lin::Errc::invalid_frame);
+    }
+
     std::unique_lock<std::shared_mutex> lk(mu_);
     if (closed_) {
         error_count_.fetch_add(1);

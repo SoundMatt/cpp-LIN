@@ -66,6 +66,18 @@ TEST_CASE("set_response rejects ID > 0x3F", "[slave][REQ-SLAVE-004]") {
     bus->close();
 }
 
+TEST_CASE("set_response rejects payload longer than kLINMaxDataLen", "[slave][REQ-SLAVE-002][REQ-SLAVE-004]") {
+    // set_response() delegates to bus_->publish() (cpp-LIN#17): an oversized
+    // payload must be rejected here too, not just at the virtual::Bus level.
+    auto bus = Bus::create();
+    Node node(bus);
+    std::vector<uint8_t> oversized(kLINMaxDataLen + 1, 0xAA);
+    auto err = node.set_response(0x10, oversized);
+    CHECK(err);
+    CHECK(node.registered_ids().empty());
+    bus->close();
+}
+
 TEST_CASE("registered_ids reflects current state", "[slave][REQ-SLAVE-005]") {
     auto bus = Bus::create();
     Node node(bus);

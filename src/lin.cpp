@@ -160,6 +160,15 @@ public:
         } catch (const ErrInvalidFrame&) {
             return relay::make_error_code(relay::Errc::payload_too_large);
         }
+        // Same reasoning as the ID-validation comment above: bus_->publish()
+        // (IBus::publish() -> Bus::do_publish()) correctly rejects an
+        // over-length payload with lin::Errc::invalid_frame, but that isn't
+        // one of relay.Node::send()'s four documented sentinels, so an
+        // oversized payload is translated to ErrPayloadTooLarge here rather
+        // than forwarding IBus's raw error code (cpp-LIN#17).
+        if (f.data.size() > kLINMaxDataLen) {
+            return relay::make_error_code(relay::Errc::payload_too_large);
+        }
         return bus_->publish(f.id, std::move(f.data));
     }
 
