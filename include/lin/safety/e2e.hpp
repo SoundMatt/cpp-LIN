@@ -5,12 +5,24 @@
 
 // safety/e2e.hpp — End-to-end data protection for LIN payloads.
 //
-// Wire format (little-endian, 10 bytes followed by original payload):
-//   Bytes  0–1   DataID (uint16)
-//   Bytes  2–3   SourceID (uint16)
-//   Bytes  4–7   SequenceCounter (uint32, monotonically increasing)
-//   Bytes  8–9   CRC-16/CCITT-FALSE over bytes 0–7 (CRC slot zeroed) plus payload
-//   Bytes 10+    Original payload
+// Wire format (little-endian, 3-byte header followed by original payload):
+//   Byte   0     SequenceCounter (uint8, monotonically increasing, wraps mod 256)
+//   Bytes  1–2   CRC-16/CCITT-FALSE (little-endian) over DataID (2B) + SourceID (2B)
+//                + SequenceCounter (1B) + payload
+//   Bytes  3+    Original payload
+//
+// DataID and SourceID are never transmitted on the wire — both ends of an E2E
+// link must be configured with an identical Config (this is the normal
+// deployment model for automotive E2E profiles operating over short PDUs).
+// They are still bound into the CRC, so a receiver configured with the wrong
+// DataID/SourceID will observe a CRC mismatch rather than silently accepting
+// a message meant for a different logical data element.
+//
+// kHeaderSize (3) is deliberately small relative to kLINMaxDataLen (8): a LIN
+// frame can carry at most kLINMaxDataLen - kHeaderSize = 5 bytes of protected
+// payload in a single frame. An earlier 10-byte header made every protected
+// payload — including an empty one — exceed kLINMaxDataLen, so no protected
+// message could ever be published on an actual LIN bus (see cpp-LIN#17).
 //
 // fusa:req REQ-SAFETY-001 REQ-SAFETY-002 REQ-SAFETY-003 REQ-SAFETY-004
 // fusa:req REQ-SAFETY-005 REQ-SAFETY-006 REQ-SAFETY-007 REQ-SAFETY-008
@@ -30,7 +42,7 @@
 namespace lin::safety {
 
 // fusa:req REQ-SAFETY-001 REQ-SAFETY-002
-inline constexpr std::size_t kHeaderSize = 10;
+inline constexpr std::size_t kHeaderSize = 3;
 
 // fusa:req REQ-SAFETY-001 REQ-SAFETY-002
 struct Config {

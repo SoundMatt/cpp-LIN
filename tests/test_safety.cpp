@@ -8,6 +8,7 @@
 // fusa:test REQ-SAFETY-009 REQ-SAFETY-010 REQ-SAFETY-011 REQ-SAFETY-012
 // fusa:test REQ-SAFETY-013 REQ-SAFETY-014 REQ-SAFETY-015 REQ-SEOOC-001
 
+#include <lin/lin.hpp>
 #include <lin/safety/e2e.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <atomic>
@@ -21,8 +22,19 @@ TEST_CASE("Config has DataID and SourceID fields", "[safety][REQ-SAFETY-001][REQ
     CHECK(cfg.source_id == 0x12);
 }
 
-TEST_CASE("E2E header is exactly 10 bytes", "[safety][REQ-SAFETY-004]") {
-    CHECK(kHeaderSize == 10u);
+TEST_CASE("E2E header is exactly 3 bytes", "[safety][REQ-SAFETY-004]") {
+    CHECK(kHeaderSize == 3u);
+}
+
+// Regression test for cpp-LIN#17: the documented ASIL-B publish pattern
+// (Protector::protect() output fed straight into Bus::publish()) must be
+// able to fit within a single LIN frame for at least some non-trivial
+// payload size. A header that alone exceeds kLINMaxDataLen makes the
+// documented safety pattern unimplementable on a real LIN bus.
+TEST_CASE("kHeaderSize leaves room for a non-empty payload within kLINMaxDataLen",
+          "[safety][REQ-SAFETY-012][regression]") {
+    CHECK(kHeaderSize < lin::kLINMaxDataLen);
+    CHECK(lin::kLINMaxDataLen - kHeaderSize >= 1u);
 }
 
 TEST_CASE("E2EErrorKind values are distinct", "[safety]") {
@@ -35,19 +47,26 @@ TEST_CASE("Protector starts with seq=0", "[safety][REQ-SAFETY-003]") {
     Config cfg{0x0001, 0x01};
     Protector p{cfg};
     auto frame = p.protect({0x00});
-    uint32_t seq = static_cast<uint32_t>(frame[4])
-                 | static_cast<uint32_t>(frame[5]) << 8
-                 | static_cast<uint32_t>(frame[6]) << 16
-                 | static_cast<uint32_t>(frame[7]) << 24;
-    CHECK(seq == 0);
+    CHECK(frame[0] == 0);
 }
 
 TEST_CASE("protect output length == kHeaderSize + len(payload)", "[safety][REQ-SAFETY-012]") {
     Config cfg{0x0001, 0x0010};
     Protector p{cfg};
-    std::vector<uint8_t> payload = {1, 2, 3, 4};
+    std::vector<uint8_t> payload = {1, 2, 3};
     auto out = p.protect(payload);
     CHECK(out.size() == kHeaderSize + payload.size());
+}
+
+// Fits entirely within one LIN frame — the pattern documented in
+// SAFETY_MANUAL.md §4.2 must actually be publishable.
+TEST_CASE("protect output for a small payload fits within kLINMaxDataLen",
+          "[safety][REQ-SAFETY-012][regression]") {
+    Config cfg{0x0001, 0x0010};
+    Protector p{cfg};
+    std::vector<uint8_t> payload = {1, 2};  // 2 bytes: 3-byte header + 2 == 5 <= 8
+    auto out = p.protect(payload);
+    CHECK(out.size() <= lin::kLINMaxDataLen);
 }
 
 TEST_CASE("protect and unwrap round-trip", "[safety][REQ-SAFETY-011]") {
@@ -70,38 +89,50 @@ TEST_CASE("protect increments sequence counter", "[safety][REQ-SAFETY-003][REQ-S
     auto p0 = protector.protect({0xAA});
     auto p1 = protector.protect({0xBB});
 
-    uint32_t s0 = static_cast<uint32_t>(p0[4])
-                | static_cast<uint32_t>(p0[5]) << 8
-                | static_cast<uint32_t>(p0[6]) << 16
-                | static_cast<uint32_t>(p0[7]) << 24;
-    uint32_t s1 = static_cast<uint32_t>(p1[4])
-                | static_cast<uint32_t>(p1[5]) << 8
-                | static_cast<uint32_t>(p1[6]) << 16
-                | static_cast<uint32_t>(p1[7]) << 24;
-    CHECK(s1 == s0 + 1);
+    CHECK(p1[0] == static_cast<uint8_t>(p0[0] + 1));
 }
 
-TEST_CASE("DataID embedded in bytes 0-1 little-endian", "[safety][REQ-SAFETY-001]") {
-    Config cfg{0xABCD, 0x0000};
-    Protector p{cfg};
-    auto out = p.protect({0x00});
-    uint16_t data_id = static_cast<uint16_t>(out[0]) | static_cast<uint16_t>(out[1]) << 8;
-    CHECK(data_id == 0xABCD);
+TEST_CASE("sequence counter wraps mod 256", "[safety][REQ-SAFETY-003][regression]") {
+    Config cfg{0x0001, 0x0010};
+    Protector protector{cfg};
+
+    std::vector<uint8_t> first_out;
+    for (int i = 0; i < 256; ++i) {
+        auto out = protector.protect({0x00});
+        if (i == 0) first_out = out;
+    }
+    auto wrapped = protector.protect({0x00});
+    // After 257 total protect() calls (indices 0..256), the 257th call's
+    // counter byte must equal the 1st call's counter byte (wrap mod 256).
+    CHECK(wrapped[0] == first_out[0]);
 }
 
-TEST_CASE("SourceID embedded in bytes 2-3 little-endian", "[safety][REQ-SAFETY-002]") {
-    Config cfg{0x0000, 0x1234};
+TEST_CASE("DataID and SourceID are never written to the wire", "[safety][REQ-SAFETY-001][REQ-SAFETY-002]") {
+    Config cfg{0xABCD, 0x1234};
     Protector p{cfg};
     auto out = p.protect({0x00});
-    uint16_t source_id = static_cast<uint16_t>(out[2]) | static_cast<uint16_t>(out[3]) << 8;
-    CHECK(source_id == 0x1234);
+    // The header is only kHeaderSize (3) bytes: SequenceCounter + CRC.
+    // Neither DataID nor SourceID appears verbatim anywhere in the header.
+    CHECK(out.size() == kHeaderSize + 1);
+}
+
+TEST_CASE("DataID/SourceID mismatch is detected as a CRC error", "[safety][REQ-SAFETY-001][REQ-SAFETY-002][regression]") {
+    Config sender_cfg{0xABCD, 0x1234};
+    Config receiver_cfg{0xABCD, 0x9999};  // different SourceID
+    Protector protector{sender_cfg};
+    Receiver  receiver{receiver_cfg};
+
+    auto protected_payload = protector.protect({0x01});
+    REQUIRE_THROWS_AS(receiver.unwrap(protected_payload), E2EError);
+    try { receiver.unwrap(protected_payload); }
+    catch (const E2EError& e) { CHECK(e.kind() == E2EErrorKind::CRCMismatch); }
 }
 
 TEST_CASE("unwrap: header too short throws E2EError", "[safety][REQ-SAFETY-007]") {
     Config cfg{};
     Receiver receiver{cfg};
-    REQUIRE_THROWS_AS(receiver.unwrap({0x01, 0x02, 0x03}), E2EError);
-    try { receiver.unwrap({1, 2, 3}); }
+    REQUIRE_THROWS_AS(receiver.unwrap({0x01, 0x02}), E2EError);
+    try { receiver.unwrap({0x01, 0x02}); }
     catch (const E2EError& e) { CHECK(e.kind() == E2EErrorKind::HeaderTooShort); }
 }
 
@@ -111,7 +142,7 @@ TEST_CASE("unwrap: CRC mismatch throws E2EError", "[safety][REQ-SAFETY-008]") {
     Receiver  receiver{cfg};
 
     auto protected_payload = protector.protect({0x01, 0x02});
-    protected_payload[8] ^= 0xFF;  // corrupt CRC
+    protected_payload[1] ^= 0xFF;  // corrupt CRC
     REQUIRE_THROWS_AS(receiver.unwrap(protected_payload), E2EError);
     try { receiver.unwrap(protected_payload); }
     catch (const E2EError& e) { CHECK(e.kind() == E2EErrorKind::CRCMismatch); }

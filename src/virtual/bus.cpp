@@ -35,6 +35,14 @@ std::error_code Bus::do_publish(uint8_t id, std::vector<uint8_t> data, ChecksumT
         error_count_.fetch_add(1);
         return lin::make_error_code(lin::Errc::invalid_frame);
     }
+    // Reject oversized payloads instead of silently accepting a response
+    // that can never be sent as a valid LIN frame (§5.3; cpp-LIN#17). Empty
+    // data is intentionally exempt — it is the documented signal to clear a
+    // previously registered response, not a frame to be transmitted.
+    if (data.size() > kLINMaxDataLen) {
+        error_count_.fetch_add(1);
+        return lin::make_error_code(lin::Errc::invalid_frame);
+    }
 
     std::unique_lock<std::shared_mutex> lk(mu_);
     if (closed_) {

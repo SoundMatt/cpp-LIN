@@ -66,6 +66,21 @@ TEST_CASE("set_response rejects ID > 0x3F", "[slave][REQ-SLAVE-004]") {
     bus->close();
 }
 
+// Regression test for cpp-LIN#17: set_response() only validated the frame
+// ID, never data.size(), so it delegated an oversized payload straight
+// through to the bus. Covered here at the slave::Node layer since the
+// safety-manual-documented pattern calls set_response() directly with a
+// safety::Protector::protect() output.
+TEST_CASE("set_response rejects data longer than kLINMaxDataLen", "[slave][REQ-SLAVE-004][regression]") {
+    auto bus = Bus::create();
+    Node node(bus);
+    std::vector<uint8_t> oversized(kLINMaxDataLen + 1, 0xAA);
+    auto err = node.set_response(0x10, oversized);
+    CHECK(err);
+    CHECK(node.registered_ids().empty());
+    bus->close();
+}
+
 TEST_CASE("registered_ids reflects current state", "[slave][REQ-SLAVE-005]") {
     auto bus = Bus::create();
     Node node(bus);
