@@ -21,9 +21,8 @@ Node::Node(std::shared_ptr<IMasterBus> bus)
 
 // fusa:req REQ-MASTER-010 REQ-MASTER-011 REQ-MASTER-012
 std::error_code Node::set_schedule(std::vector<ScheduleEntry> entries) {
-    if (entries.empty())
-        return lin::make_error_code(lin::Errc::invalid_frame);  // empty schedule
-
+    // An empty schedule is valid (RELAY §8.3) and disables scheduled
+    // transmission; run() early-returns on an empty schedule.
     for (const auto& e : entries) {
         if (e.id > kLINMaxID)
             return lin::make_error_code(lin::Errc::invalid_frame);

@@ -5,7 +5,7 @@
   "payload": "qrs=",
   "meta": {
     "lin.checksum": "73",
-    "lin.checksum_type": "1"
+    "lin.checksum_type": "enhanced"
   },
-  "spec_version": "1.11"
+  "spec_version": "2.0"
 }

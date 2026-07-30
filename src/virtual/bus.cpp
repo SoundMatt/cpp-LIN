@@ -77,7 +77,7 @@ std::pair<Frame, std::error_code> Bus::send_header(uint8_t id) {
     auto it = responses_.find(id);
     if (it == responses_.end()) {
         error_count_.fetch_add(1);
-        return {Frame{}, relay::ErrTimeout()};  // ErrNoResponse maps to timeout
+        return {Frame{}, lin::make_error_code(lin::Errc::no_response)};
     }
 
     uint8_t pid = protect_id(id);
@@ -109,11 +109,17 @@ std::pair<Frame, std::error_code> Bus::send_header(uint8_t id) {
             }
             break;
         }
-        case relay::BackPressurePolicy::DropOldest:
-            s.ch->send_drop_oldest(f);
-            deliver_count_.fetch_add(1);
-            bytes_delivered_.fetch_add(f.data.size());
+        case relay::BackPressurePolicy::DropOldest: {
+            auto r = s.ch->send_drop_oldest(f);
+            if (r == Chan<Frame>::SendResult::Evicted) {
+                // §9.1: an evicted (discarded) sample is a drop, not a delivery.
+                drop_count_.fetch_add(1);
+            } else if (r == Chan<Frame>::SendResult::Ok) {
+                deliver_count_.fetch_add(1);
+                bytes_delivered_.fetch_add(f.data.size());
+            }
             break;
+        }
         case relay::BackPressurePolicy::Block:
             s.ch->send(f);
             deliver_count_.fetch_add(1);

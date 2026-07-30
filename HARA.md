@@ -109,7 +109,7 @@ ASIL-D at system level if required.
 |----|-------------|------|--------|
 | SG-01 | No data corruption during TX/RX | ASIL-B | Implemented (checksum, validation) |
 | SG-02 | Reject frames with ID > 0x3F | ASIL-B | Implemented (validate_frame) |
-| SG-03 | Detect incorrect checksums | ASIL-B | Implemented (calc_checksum, verify_pid) |
+| SG-03 | Detect incorrect checksums | ASIL-B | Partial (verify_checksum compares a received checksum; calc_checksum/verify_pid alone only compute a checksum / check PID parity, not the data checksum) |
 | SG-04 | No unbounded memory growth | ASIL-B | Implemented (Chan capacity, drop policy) |
 | SG-05 | Detect E2E protection errors | ASIL-B | Implemented (E2E CRC-16, seq check) |
 | SG-06 | Diagnostic frames use Classic checksum | ASIL-B | Implemented (validate_frame) |
@@ -131,6 +131,6 @@ ASIL-D at system level if required.
 
 - ISO 26262:2018 Part 3 — Concept phase
 - LIN Specification Package Rev 2.2A — Section 2 (Frame structure)
-- RELAY Specification v1.11 — §15 (Error handling)
+- RELAY Specification v2.0 — §5 (Error handling)
 - `SEOOC.md` — Assumptions on use
 - `SAFETY_PLAN.md` — Development process

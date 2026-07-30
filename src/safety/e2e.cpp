@@ -116,7 +116,9 @@ std::vector<uint8_t> Receiver::unwrap(const std::vector<uint8_t>& data) {
     std::lock_guard<std::mutex> lk(mu_);
     if (!first_ && seq != last_seq_ + 1) {
         uint32_t expected_seq = last_seq_ + 1;
-        last_seq_ = seq;
+        // Do NOT advance last_seq_ on a rejected frame: a persistent stream at
+        // a shifted counter must keep being flagged, not silently resync to an
+        // attacker-/fault-supplied counter after a single error (H-04/SG-05).
         throw E2EError(E2EErrorKind::SequenceGap, seq,
                        "expected " + std::to_string(expected_seq) +
                        ", got " + std::to_string(seq));

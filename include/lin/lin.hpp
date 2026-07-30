@@ -28,7 +28,7 @@ namespace lin {
 
 // ── Spec version ─────────────────────────────────────────────────────────────
 
-inline constexpr const char* kSpecVersion = "1.11";
+inline constexpr const char* kSpecVersion = "2.0";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -53,7 +53,7 @@ struct Frame {
     uint8_t              id{};           // 6-bit frame identifier (0x00–0x3F)
     std::vector<uint8_t> data;           // payload (1–8 bytes)
     uint8_t              checksum{};     // wire checksum byte
-    ChecksumType         checksum_type{ChecksumType::Enhanced};
+    ChecksumType         checksum_type{ChecksumType::Classic};  // §18.2 canonical default (enum zero value)
 };
 
 // ── Filter ────────────────────────────────────────────────────────────────────
@@ -116,9 +116,13 @@ inline std::error_code ErrPayloadTooLarge() noexcept { return relay::ErrPayloadT
 // not the relay.Node interface, so — like CAN's ErrInvalidFrame (§5.4, "not a
 // relay sentinel") — this code is not mapped to any relay::Errc value.
 
-// fusa:req REQ-LIN-015
+// fusa:req REQ-LIN-015 REQ-LIN-021
 enum class Errc : int {
     invalid_frame = 1,
+    // Distinct "no slave answered" sentinel (§5.4). Its error category maps it
+    // as equivalent to relay::Errc::timeout so callers that only test for a
+    // deadline expiry still match, while the distinct condition is preserved.
+    no_response   = 2,
 };
 
 const std::error_category& error_category() noexcept;
@@ -146,6 +150,14 @@ uint8_t verify_pid(uint8_t pid);
 //
 // fusa:req REQ-LIN-008 REQ-LIN-009 REQ-LIN-010
 uint8_t calc_checksum(uint8_t pid, const std::vector<uint8_t>& data, ChecksumType ct) noexcept;
+
+// Verifies a received checksum byte against the locally-computed value for the
+// given PID and data (ISO 17987 frame reception). Returns true when received
+// equals the recomputed checksum, false on a mismatch (corrupt frame — H-01).
+//
+// fusa:req REQ-LIN-008 REQ-LIN-009 REQ-LIN-010
+bool verify_checksum(uint8_t pid, const std::vector<uint8_t>& data,
+                     uint8_t received, ChecksumType ct) noexcept;
 
 // Validates f against LIN protocol constraints.
 // Throws ErrInvalidFrame if any constraint is violated.
