@@ -33,7 +33,7 @@
 - [x] `RELAY_BUILD_CLI` CMake alias (§17.7, since removed — see v0.4.0)
 - [x] Test vectors updated to spec_version 1.11
 
-## v0.4.0 — RELAY ecosystem audit fixes (current)
+## v0.4.0 — RELAY ecosystem audit fixes
 
 - [x] LIN-specific error category (`lin::Errc::invalid_frame`) distinct from
       `ErrPayloadTooLarge` for out-of-range frame IDs (spec §5.3)
@@ -49,6 +49,26 @@
 - [x] `tool` field lowercased to `cpp-lin` (spec §13.2 CLI-binary-name
       convention), matching peers like `go-can`
 - [x] `lin::mock` canonical module (spec §13.7.1), aliasing `lin::virt::Bus`
+
+## v0.4.1 — RELAY ecosystem audit fixes, pass 2 (current)
+
+- [x] Declared RELAY spec version bumped 1.11 → 2.0
+- [x] `verify_checksum()` added; HARA SG-03 downgraded from "Implemented" to
+      "Partial" pending a verified-checksum path in a real (non-virtual) bus
+      backend
+- [x] `lin::Errc::no_response` distinct sentinel replaces the generic
+      timeout previously returned by `send_header` on no slave response
+- [x] `from_message` rejects unrecognized `lin.checksum_type` instead of
+      silently defaulting to Classic
+- [x] `master::Node::set_schedule` accepts an empty schedule (spec §8.3)
+- [x] DropOldest back-pressure counts an eviction as a drop, not a delivery
+- [x] `Frame::checksum_type` defaults to Classic (enum zero value)
+- [x] E2E `Receiver::unwrap` no longer resyncs its sequence counter after a
+      single rejected frame
+- [x] Requirement/HARA traceability corrections: `REQ-CLI-001..006` /
+      `REQ-SEC-013` defined, three misattributed SG rationale references
+      fixed, HARA §15→§5 citation fixed
+- [x] `CHANGELOG.md` added
 
 ## v0.5.0 — Enhanced Bus Features
 

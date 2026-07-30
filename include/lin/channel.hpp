@@ -24,7 +24,7 @@ namespace lin {
 template<typename T>
 class Chan {
 public:
-    enum class SendResult { Ok, Full, Closed };
+    enum class SendResult { Ok, Full, Closed, Evicted };
 
     explicit Chan(std::size_t capacity = 64) : capacity_(capacity) {}
 
@@ -54,14 +54,16 @@ public:
     }
 
     // Send with DropOldest policy — evicts head when at capacity.
-    // Returns false if closed.
-    bool send_drop_oldest(T value) {
+    // Returns Closed if closed, Evicted if an item was discarded to make room
+    // (the new item is still enqueued), or Ok if enqueued without eviction.
+    SendResult send_drop_oldest(T value) {
         std::lock_guard<std::mutex> lk(mu_);
-        if (closed_) return false;
-        if (buf_.size() >= capacity_) buf_.pop_front();
+        if (closed_) return SendResult::Closed;
+        bool evicted = false;
+        if (buf_.size() >= capacity_) { buf_.pop_front(); evicted = true; }
         buf_.push_back(std::move(value));
         cv_not_empty_.notify_one();
-        return true;
+        return evicted ? SendResult::Evicted : SendResult::Ok;
     }
 
     // Blocking recv — returns nullopt only when closed and empty.

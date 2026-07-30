@@ -52,6 +52,13 @@ uint8_t calc_checksum(uint8_t pid, const std::vector<uint8_t>& data, ChecksumTyp
     return static_cast<uint8_t>(0xFF - static_cast<uint8_t>(sum));
 }
 
+// ── verify_checksum ── REQ-LIN-008 REQ-LIN-009 REQ-LIN-010 ───────────────────
+
+bool verify_checksum(uint8_t pid, const std::vector<uint8_t>& data,
+                     uint8_t received, ChecksumType ct) noexcept {
+    return calc_checksum(pid, data, ct) == received;
+}
+
 // ── validate_frame ── REQ-LIN-001 REQ-LIN-002 REQ-LIN-003 REQ-LIN-015 REQ-LIN-016 REQ-LIN-017
 
 void validate_frame(const Frame& f) {
@@ -76,8 +83,17 @@ public:
     std::string message(int ev) const override {
         switch (static_cast<Errc>(ev)) {
         case Errc::invalid_frame: return "lin: invalid frame";
+        case Errc::no_response:   return "lin: no slave response";
         default:                  return "lin: unknown error";
         }
+    }
+
+    // no_response wraps a deadline expiry: it is equivalent to relay's timeout
+    // condition (§5.4) so callers testing for relay::ErrTimeout still match.
+    bool equivalent(int code, const std::error_condition& cond) const noexcept override {
+        if (static_cast<Errc>(code) == Errc::no_response)
+            return cond == relay::ErrTimeout().default_error_condition();
+        return std::error_category::equivalent(code, cond);
     }
 };
 
@@ -119,10 +135,12 @@ Frame from_message(const relay::Message& m) {
     f.data = m.payload;
 
     auto it = m.meta.find("lin.checksum_type");
-    if (it != m.meta.end() && it->second == "enhanced")
+    if (it == m.meta.end() || it->second.empty() || it->second == "classic")
+        f.checksum_type = ChecksumType::Classic;
+    else if (it->second == "enhanced")
         f.checksum_type = ChecksumType::Enhanced;
     else
-        f.checksum_type = ChecksumType::Classic;
+        throw ErrInvalidFrame("unknown lin.checksum_type: " + it->second);
 
     it = m.meta.find("lin.checksum");
     if (it != m.meta.end() && !it->second.empty()) {

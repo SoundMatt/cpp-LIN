@@ -25,11 +25,11 @@ TEST_CASE("Node is constructible from a bus", "[master][REQ-MASTER-001]") {
     (void)bus->close();
 }
 
-TEST_CASE("set_schedule rejects empty schedule", "[master][REQ-MASTER-010]") {
+TEST_CASE("set_schedule accepts empty schedule (disables scheduled TX)", "[master][REQ-MASTER-010]") {
     auto bus = Bus::create();
     Node node(bus);
     auto err = node.set_schedule({});
-    CHECK(err);
+    CHECK_FALSE(err);  // RELAY §8.3: an empty table is valid and disables scheduled transmission
     (void)bus->close();
 }
 

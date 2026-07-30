@@ -6,7 +6,7 @@
       "title": "ValidateFrame rejects ID > 0x3F",
       "description": "ValidateFrame shall return an error when Frame.ID exceeds MaxID (0x3F).",
       "asil": "ASIL-B",
-      "rationale": "SG-05: prevents an invalid identifier from being transmitted or processed.",
+      "rationale": "SG-02: prevents an invalid identifier from being transmitted or processed.",
       "tags": ["core", "validation"]
     },
     {
@@ -14,7 +14,7 @@
       "title": "ValidateFrame rejects empty data",
       "description": "ValidateFrame shall return an error when Frame.Data has zero length.",
       "asil": "ASIL-B",
-      "rationale": "SG-05: a zero-length LIN frame is malformed and has no defined wire format.",
+      "rationale": "SG-01: a zero-length LIN frame is malformed and has no defined wire format.",
       "tags": ["core", "validation"]
     },
     {
@@ -22,7 +22,7 @@
       "title": "ValidateFrame rejects oversized data",
       "description": "ValidateFrame shall return an error when len(Frame.Data) exceeds MaxDataLen (8).",
       "asil": "ASIL-B",
-      "rationale": "SG-05: LIN 2.x limits payloads to 8 bytes; exceeding this is a protocol violation.",
+      "rationale": "SG-01: LIN 2.x limits payloads to 8 bytes; exceeding this is a protocol violation.",
       "tags": ["core", "validation"]
     },
     {
@@ -1104,6 +1104,62 @@
       "asil": "ASIL-B",
       "rationale": "RELAY §3.2: robust protocol string parsing with two variants for exception/error-code styles.",
       "tags": ["relay", "protocol"]
+    },
+    {
+      "id": "REQ-CLI-001",
+      "title": "version command prints tool and spec version",
+      "description": "The CLI `version` command shall print the tool and spec version as JSON (or text with --format text).",
+      "asil": "QM",
+      "rationale": "RELAY §11.1: mandatory version command for conformance self-reporting.",
+      "tags": ["cli"]
+    },
+    {
+      "id": "REQ-CLI-002",
+      "title": "capabilities command prints supported protocols and commands",
+      "description": "The CLI `capabilities` command shall print supported protocols, transports, commands and interfaces as JSON.",
+      "asil": "QM",
+      "rationale": "RELAY §11.2/§12: mandatory capabilities self-report.",
+      "tags": ["cli"]
+    },
+    {
+      "id": "REQ-CLI-003",
+      "title": "status command prints health status",
+      "description": "The CLI `status` command shall print the health status as JSON (or text with --format text).",
+      "asil": "QM",
+      "rationale": "RELAY §11.1: mandatory status command.",
+      "tags": ["cli"]
+    },
+    {
+      "id": "REQ-CLI-004",
+      "title": "CLI exits 2 on invalid arguments",
+      "description": "The CLI shall exit with code 2 and write an error name to stderr on invalid or unknown arguments.",
+      "asil": "QM",
+      "rationale": "RELAY §11.3: standardised CLI exit codes.",
+      "tags": ["cli"]
+    },
+    {
+      "id": "REQ-CLI-005",
+      "title": "CLI --format flag selects text or json output",
+      "description": "Commands accepting --format shall support 'text' and 'json' and reject other values with exit code 2.",
+      "asil": "QM",
+      "rationale": "RELAY §11.1: --format text|json handling.",
+      "tags": ["cli"]
+    },
+    {
+      "id": "REQ-CLI-006",
+      "title": "convert command bridges lin.Frame to relay.Message JSON",
+      "description": "The CLI `convert` command shall read a lin.Frame JSON from stdin, validate it, and write the corresponding relay.Message JSON to stdout, writing the sentinel error name to stderr on failure.",
+      "asil": "QM",
+      "rationale": "RELAY §11.2: cross-protocol conversion command.",
+      "tags": ["cli"]
+    },
+    {
+      "id": "REQ-SEC-013",
+      "title": "Bounded channel try_send rejects when full",
+      "description": "Chan::try_send shall return SendResult::Full when the channel is at capacity rather than growing unboundedly, bounding memory under back-pressure.",
+      "asil": "ASIL-B",
+      "rationale": "SG-04: no unbounded memory growth under load / denial-of-service resistance.",
+      "tags": ["security", "channel"]
     }
   ]
 }
