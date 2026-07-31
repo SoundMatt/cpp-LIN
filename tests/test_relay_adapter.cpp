@@ -39,6 +39,54 @@ TEST_CASE("adapt: send publishes payload to bus", "[adapter][REQ-ADAPT-002]") {
     (void)bus->close();
 }
 
+TEST_CASE("adapt: send preserves classic checksum type across the bridge", "[adapter][REQ-ADAPT-002][REQ-LIN-011][REQ-LIN-012]") {
+    // Regression test for cpp-LIN-02: a bridged message explicitly tagged
+    // lin.checksum_type=classic must be re-emitted on the virtual bus with
+    // the classic checksum, not silently upgraded to enhanced.
+    auto bus = Bus::create();
+    auto node = adapt(bus);
+
+    relay::Message msg;
+    msg.protocol = relay::Protocol::LIN;
+    msg.id = "16";
+    msg.payload = {0xAA, 0xBB};
+    msg.meta["lin.checksum_type"] = "classic";
+    auto err = node->send(msg);
+    REQUIRE_FALSE(err);
+
+    auto [f, ferr] = bus->send_header(0x10);
+    REQUIRE_FALSE(ferr);
+    CHECK(f.checksum_type == ChecksumType::Classic);
+    uint8_t pid = protect_id(0x10);
+    CHECK(f.checksum == calc_checksum(pid, f.data, ChecksumType::Classic));
+    (void)bus->close();
+}
+
+TEST_CASE("adapt: send forces classic checksum for diagnostic frame IDs even when tagged enhanced", "[adapter][REQ-ADAPT-002][REQ-LIN-011][REQ-LIN-012]") {
+    // Regression test for cpp-LIN-01/02: diagnostic frames 0x3C/0x3D MUST
+    // always use the classic checksum (LIN 2.2A §2.3.1.5), even if the
+    // bridged message is (incorrectly) tagged lin.checksum_type=enhanced.
+    // This exercises the ID-based override independently of the
+    // checksum_type-based one.
+    auto bus = Bus::create();
+    auto node = adapt(bus);
+
+    relay::Message msg;
+    msg.protocol = relay::Protocol::LIN;
+    msg.id = "60";  // 0x3C
+    msg.payload = {0x01, 0x02};
+    msg.meta["lin.checksum_type"] = "enhanced";
+    auto err = node->send(msg);
+    REQUIRE_FALSE(err);
+
+    auto [f, ferr] = bus->send_header(kLINDiagRequestID);
+    REQUIRE_FALSE(ferr);
+    CHECK(f.checksum_type == ChecksumType::Classic);
+    uint8_t pid = protect_id(kLINDiagRequestID);
+    CHECK(f.checksum == calc_checksum(pid, f.data, ChecksumType::Classic));
+    (void)bus->close();
+}
+
 TEST_CASE("adapt: send rejects out-of-range frame ID string", "[adapter][REQ-ADAPT-003]") {
     auto bus = Bus::create();
     auto node = adapt(bus);

@@ -132,6 +132,54 @@ TEST_CASE("Decode uses LSB-first Intel byte order", "[ldf][REQ-LDF-009]") {
     CHECK(decoded.at("MotorSpeed") == 0x42);
 }
 
+TEST_CASE("parse clamps malformed/adversarial signal bit_width to [0,64]", "[ldf][REQ-LDF-007]") {
+    // Regression test for cpp-LIN-A2: DB::decode()'s bit-extraction loop does
+    // `val |= uint64_t(1) << i` for i in [0, bit_width). Without clamping
+    // bit_width at parse time, a malformed/adversarial LDF declaring an
+    // absurd bit_width (here 999999999, far beyond any real LIN signal)
+    // combined with a large-enough payload would shift by >= 64, which is
+    // undefined behaviour. bit_width must be bounded to <= 64 regardless of
+    // payload size, not merely bounded incidentally by the loop's own
+    // byte_idx >= data.size() break.
+    static const char* kMalformedLDF = R"(
+LIN_description_file ;
+LIN_protocol_version = "2.1" ;
+LIN_language_version = "2.1" ;
+LIN_speed = 19.2 kbps ;
+
+Nodes {
+  Master: BCM, 1 ms, 0.1 ms ;
+  Slaves: MotorControl ;
+}
+
+Signals {
+  HugeSignal : 999999999, 0, MotorControl, BCM ;
+}
+
+Frames {
+  HugeFrame : 0x10, MotorControl, 8 {
+    HugeSignal, 0 ;
+  }
+}
+)";
+    std::istringstream ss(kMalformedLDF);
+    auto db = parse(ss);
+    REQUIRE(db != nullptr);
+
+    auto sig = db->signal("HugeSignal");
+    REQUIRE(sig != nullptr);
+    CHECK(sig->bit_width <= 64);
+    CHECK(sig->bit_width >= 0);
+
+    // Decode with an oversized payload (well beyond a real LIN frame's 8-byte
+    // max) so that, absent the clamp, the loop would run i up to
+    // bit_width - 1 (>> 63) before byte_idx ever caught up — exercising the
+    // exact UB path. With the clamp in place this must complete safely.
+    std::vector<uint8_t> huge_data(64, 0xFF);
+    auto decoded = db->decode(0x10, huge_data);
+    REQUIRE(decoded.count("HugeSignal") == 1);
+}
+
 TEST_CASE("Decode returns empty for unknown frame ID", "[ldf][REQ-LDF-010]") {
     std::istringstream ss(kSampleLDF);
     auto db = parse(ss);

@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.2]
+### Fixed
+- `virtual::Bus::publish()` (and the default `IBus::publish()` entry point)
+  now forces the classic checksum for diagnostic frame IDs 0x3C/0x3D
+  regardless of the caller's requested checksum type, matching LIN 2.2A
+  §2.3.1.5 and RELAY §15.3, and matching `validate_frame()`'s existing
+  rejection of enhanced-checksum diagnostic frames.
+- RELAY adapter `LinAdapter::send()` now honours the bridged message's
+  `lin.checksum_type` (and forces classic for 0x3C/0x3D), routing to
+  `publish_classic()` instead of unconditionally upgrading every bridged
+  frame to the enhanced checksum via `publish()`.
+- `master::Node::run()` now returns success (a no-op) for an empty schedule
+  table instead of `lin::Errc::invalid_frame`, matching RELAY §8.3 ("an
+  empty table is valid and disables scheduled transmission").
+- LDF parser now clamps `Signal::bit_width` to `[0, 64]` at parse time, so
+  `DB::decode()`'s bit-extraction loop can no longer be driven into a
+  shift-by->=64 (undefined behaviour) by a malformed/adversarial LDF file
+  combined with an oversized payload.
+### Changed
+- CI: `ilammy/msvc-dev-cmd` and `softprops/action-gh-release` pinned to
+  commit SHA instead of a floating major-version tag.
+- CI: `cpfusa init` / `cpfusa hara init` steps no longer swallow failures
+  with `|| true` — a failed init step now hard-fails the job instead of
+  letting every downstream FuSa/HARA step silently run against a
+  missing/stale config.
+
 ## [0.4.1]
 ### Added
 - `verify_checksum()`: validates a received checksum byte against the

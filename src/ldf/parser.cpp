@@ -193,6 +193,16 @@ struct Parser {
             Signal sig;
             sig.name = name;
             try { sig.bit_width = static_cast<int>(parse_int(parts[0])); } catch (...) {}
+            // Clamp bit_width to [0, 64] at parse time so DB::decode()'s
+            // extraction loop (`val |= uint64_t(1) << i` for i in
+            // [0, bit_width)) can never shift by >= 64, which is undefined
+            // behaviour, regardless of how large a malformed/adversarial LDF
+            // declares the signal width or how large the payload is. This is
+            // defence-in-depth: the loop's own byte_idx >= data.size() break
+            // happens to bound i for realistic (<=8-byte) frames today, but
+            // that is incidental, not a guarantee.
+            if (sig.bit_width < 0) sig.bit_width = 0;
+            else if (sig.bit_width > 64) sig.bit_width = 64;
             try { sig.init_value = parse_uint(parts[1]); } catch (...) {}
             sig.publisher = trim(parts[2]);
             for (std::size_t i = 3; i < parts.size(); ++i) {

@@ -50,7 +50,7 @@
       convention), matching peers like `go-can`
 - [x] `lin::mock` canonical module (spec §13.7.1), aliasing `lin::virt::Bus`
 
-## v0.4.1 — RELAY ecosystem audit fixes, pass 2 (current)
+## v0.4.1 — RELAY ecosystem audit fixes, pass 2
 
 - [x] Declared RELAY spec version bumped 1.11 → 2.0
 - [x] `verify_checksum()` added; HARA SG-03 downgraded from "Implemented" to
@@ -69,6 +69,23 @@
       `REQ-SEC-013` defined, three misattributed SG rationale references
       fixed, HARA §15→§5 citation fixed
 - [x] `CHANGELOG.md` added
+
+## v0.4.2 — RELAY ecosystem audit fixes, pass 3 (current)
+
+- [x] `virtual::Bus::publish()` forces classic checksum for diagnostic
+      frames 0x3C/0x3D (LIN 2.2A §2.3.1.5 / RELAY §15.3)
+- [x] RELAY adapter `LinAdapter::send()` honours `lin.checksum_type` /
+      diagnostic-ID classic-checksum override instead of always upgrading
+      bridged frames to enhanced
+- [x] `master::Node::run()` treats an empty schedule as a no-op success
+      (spec §8.3), not `invalid_frame`
+- [x] LDF parser clamps `Signal::bit_width` to `[0, 64]` at parse time
+      (defence-in-depth against a malformed/adversarial LDF driving
+      `DB::decode()`'s bit-extraction loop into UB)
+- [x] CI: third-party actions (`ilammy/msvc-dev-cmd`,
+      `softprops/action-gh-release`) pinned to commit SHA
+- [x] CI: `cpfusa init` / `cpfusa hara init` steps hard-fail instead of
+      being masked with `|| true`
 
 ## v0.5.0 — Enhanced Bus Features
 

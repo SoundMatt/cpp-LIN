@@ -51,6 +51,29 @@ TEST_CASE("publish_classic uses classic checksum", "[virtual][REQ-VIRT-007]") {
     bus->close();
 }
 
+TEST_CASE("publish() on diagnostic IDs forces classic checksum", "[virtual][REQ-VIRT-002][REQ-VIRT-007]") {
+    // LIN 2.2A §2.3.1.5: frame IDs 0x3C (master request) and 0x3D (slave
+    // response) MUST always use the classic checksum, even when published
+    // through the default publish() entry point (which normally requests
+    // Enhanced). Regression test for cpp-LIN-01.
+    auto bus = Bus::create();
+    REQUIRE_FALSE(bus->publish(kLINDiagRequestID, {0x01, 0x02}));
+    REQUIRE_FALSE(bus->publish(kLINDiagResponseID, {0x03, 0x04}));
+
+    auto [req, req_err] = bus->send_header(kLINDiagRequestID);
+    REQUIRE_FALSE(req_err);
+    CHECK(req.checksum_type == ChecksumType::Classic);
+    uint8_t req_pid = protect_id(kLINDiagRequestID);
+    CHECK(req.checksum == calc_checksum(req_pid, req.data, ChecksumType::Classic));
+
+    auto [resp, resp_err] = bus->send_header(kLINDiagResponseID);
+    REQUIRE_FALSE(resp_err);
+    CHECK(resp.checksum_type == ChecksumType::Classic);
+    uint8_t resp_pid = protect_id(kLINDiagResponseID);
+    CHECK(resp.checksum == calc_checksum(resp_pid, resp.data, ChecksumType::Classic));
+    bus->close();
+}
+
 TEST_CASE("send_header broadcasts to subscribers", "[virtual][REQ-VIRT-008]") {
     auto bus = Bus::create();
     auto [ch, err] = bus->subscribe({}, {});
