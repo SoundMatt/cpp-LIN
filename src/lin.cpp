@@ -178,6 +178,14 @@ public:
         } catch (const ErrInvalidFrame&) {
             return relay::make_error_code(relay::Errc::payload_too_large);
         }
+        // Honour the frame's checksum type when registering the response:
+        // classic-configured frames (and all diagnostic frames 0x3C/0x3D, which
+        // MUST use the classic checksum per LIN 2.x §2.3.1.5 / RELAY §15.3) go
+        // through publish_classic(); otherwise the default publish() would
+        // silently upgrade every bridged frame to the enhanced checksum.
+        if (f.checksum_type == ChecksumType::Classic ||
+            f.id == kLINDiagRequestID || f.id == kLINDiagResponseID)
+            return bus_->publish_classic(f.id, std::move(f.data));
         return bus_->publish(f.id, std::move(f.data));
     }
 

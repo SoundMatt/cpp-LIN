@@ -69,12 +69,15 @@ TEST_CASE("send_header delegates to bus", "[master][REQ-MASTER-002]") {
     (void)bus->close();
 }
 
-TEST_CASE("run returns error for empty schedule", "[master][REQ-MASTER-009]") {
+TEST_CASE("run is a no-op success for empty schedule", "[master][REQ-MASTER-009]") {
+    // RELAY §8.3: an empty schedule table is valid and disables scheduled
+    // transmission, so run() must return success (not invalid_frame) and
+    // simply return immediately without touching the bus.
     auto bus = Bus::create();
     Node node(bus);
-    std::atomic<bool> stop{true};
+    std::atomic<bool> stop{false};
     auto err = node.run(stop);
-    CHECK(err);  // empty schedule
+    CHECK_FALSE(err);
     (void)bus->close();
 }
 

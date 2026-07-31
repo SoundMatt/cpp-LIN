@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 project(cpplin
-    VERSION 0.4.1
+    VERSION 0.4.2
     DESCRIPTION "C++ LIN bus library — RELAY-conformant, ISO 26262 ASIL-B"
     HOMEPAGE_URL "https://github.com/SoundMatt/cpp-LIN"
     LANGUAGES CXX

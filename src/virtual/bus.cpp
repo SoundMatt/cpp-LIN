@@ -45,6 +45,13 @@ std::error_code Bus::do_publish(uint8_t id, std::vector<uint8_t> data, ChecksumT
     if (data.empty()) {
         responses_.erase(id);
     } else {
+        // Diagnostic frames (0x3C master request, 0x3D slave response) MUST use
+        // the classic checksum regardless of the caller's requested type
+        // (LIN 2.x §2.3.1.5 / RELAY §15.3), so force it here — otherwise the
+        // default publish() path (which requests Enhanced) would emit a
+        // spec-violating enhanced-checksum diagnostic frame.
+        if (id == kLINDiagRequestID || id == kLINDiagResponseID)
+            ct = ChecksumType::Classic;
         // defensive copy already done by value parameter
         responses_[id] = ResponseEntry{std::move(data), ct};
     }

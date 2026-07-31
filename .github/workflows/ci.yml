@@ -55,7 +55,7 @@ jobs:
 
       - name: Set up MSVC environment (Windows)
         if: runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
 
       - name: Configure
         shell: bash
@@ -249,7 +249,7 @@ jobs:
 
       - name: cpfusa init
         working-directory: cpp-LIN
-        run: ../cpp-FuSa/build/cpfusa init --name cpp-LIN --standard iso26262 --asil ASIL-B --project-version 0.4.0 --force || true
+        run: ../cpp-FuSa/build/cpfusa init --name cpp-LIN --standard iso26262 --asil ASIL-B --project-version 0.4.0 --force
 
       - name: cpfusa check
         working-directory: cpp-LIN
@@ -273,7 +273,7 @@ jobs:
 
       - name: cpfusa hara init
         working-directory: cpp-LIN
-        run: ../cpp-FuSa/build/cpfusa hara init --project cpp-LIN --dir . || true
+        run: ../cpp-FuSa/build/cpfusa hara init --project cpp-LIN --dir .
 
       - name: cpfusa iso26262 (ASIL-B)
         working-directory: cpp-LIN
@@ -450,7 +450,7 @@ jobs:
 
       - name: cpfusa init
         working-directory: cpp-LIN
-        run: ../cpp-FuSa/build/cpfusa init --name cpp-LIN --standard iso26262 --asil ASIL-B --project-version 0.4.0 --force || true
+        run: ../cpp-FuSa/build/cpfusa init --name cpp-LIN --standard iso26262 --asil ASIL-B --project-version 0.4.0 --force
 
       - name: Generate SARIF report
         working-directory: cpp-LIN

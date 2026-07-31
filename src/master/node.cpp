@@ -51,8 +51,11 @@ std::pair<Frame, std::error_code> Node::send_header(uint8_t id) {
 // fusa:req REQ-MASTER-003 REQ-MASTER-004 REQ-MASTER-005 REQ-MASTER-006
 // fusa:req REQ-MASTER-007 REQ-MASTER-008 REQ-MASTER-009 REQ-MASTER-013
 std::error_code Node::run(const std::atomic<bool>& stop) {
+    // RELAY §8.3: an empty schedule table is valid and disables scheduled
+    // transmission — treat it as a no-op success, not an error, so callers
+    // don't have to special-case "no schedule configured" as a failure.
     if (schedule_.empty())
-        return lin::make_error_code(lin::Errc::invalid_frame);
+        return {};
 
     while (!stop.load()) {
         for (const auto& slot : schedule_) {

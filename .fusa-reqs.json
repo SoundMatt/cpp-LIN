@@ -507,18 +507,18 @@
     },
     {
       "id": "REQ-MASTER-009",
-      "title": "Run returns error for empty schedule",
-      "description": "Run shall return an error immediately when the schedule table is empty.",
+      "title": "Run treats an empty schedule as a no-op success",
+      "description": "Run shall return success immediately (without invoking the bus) when the schedule table is empty, rather than returning an error.",
       "asil": "ASIL-B",
-      "rationale": "An empty schedule is a programming error; running it would loop forever.",
+      "rationale": "RELAY §8.3: an empty schedule table is valid and simply disables scheduled transmission; it is not a programming error, so Run must not fail callers that have not yet configured a schedule.",
       "tags": ["master", "validation"]
     },
     {
       "id": "REQ-MASTER-010",
-      "title": "SetSchedule rejects empty schedule",
-      "description": "SetSchedule shall return an error when called with nil or a zero-length slice.",
+      "title": "SetSchedule accepts an empty schedule",
+      "description": "SetSchedule shall accept a nil or zero-length slice and succeed, disabling scheduled transmission (REQ-MASTER-009) until a non-empty schedule is set.",
       "asil": "ASIL-B",
-      "rationale": "REQ-MASTER-009 precondition enforced at configuration time.",
+      "rationale": "RELAY §8.3: an empty schedule table is valid; SetSchedule must not reject it.",
       "tags": ["master", "validation"]
     },
     {
