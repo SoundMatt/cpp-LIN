@@ -153,7 +153,14 @@ jobs:
       - name: RELAY conformance gate
         run: relay conform --strict ./build/cli/cpp-lin-cli
 
-      - name: RELAY interop gate (§20 Continuous Conformance)
+      # This step only drives RELAY's own CLI against RELAY's own embedded
+      # LIN golden vectors -- self-consistency against RELAY's own
+      # reference conversion, not third-party interoperability against an
+      # independent LIN peer. Named to say what it runs rather than
+      # "interop gate", per SoundMatt/RELAY docs/INTEROP-ARCHITECTURE.md's
+      # naming discipline (THEME-K #125, INTEROP-07): `*-interop` is
+      # reserved for a check against a peer this repo did not build.
+      - name: relay interop --protocol LIN (RELAY conformance gate, §20 Continuous Conformance)
         run: relay interop --protocol LIN ./build/cli/cpp-lin-cli
 
   sanitizers:
